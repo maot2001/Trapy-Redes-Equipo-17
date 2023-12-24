@@ -33,7 +33,7 @@ def accept(conn: Conn):
 
         accept_conn = Conn()
 
-        accept_conn.origin_address = conn.socket.getsockname()
+        accept_conn.origin_address = conn.origin_address
         accept_conn.connected_address = address
 
         accept_conn.ack = get_bytes(protocol, 4, 8) +1
@@ -49,10 +49,10 @@ def accept(conn: Conn):
             if not accept_conn.running() or accept_conn.timeout():
                 logger.warning(f'syn-ack sending again')
                 accept_conn.socket.sendto(packet, accept_conn.connected_address)
-                accept_conn.origin_address = accept_conn.socket.getsockname()
+                accept_conn.origin_address = conn.origin_address
 
             if accept_conn.waiter(180):
-                conn.time_init = conn.time_stop
+                accept_conn.time_init = accept_conn.time_stop
                 logger.error(f'error sending')
                 raise ConnException()
 
@@ -73,13 +73,46 @@ def accept(conn: Conn):
 
 def dial(address: str):
     conn = Conn()
+    conn.origin_address = conn.socket.getsockname()
+    conn.connected_address = parse_address(address)
+    conn.ack = 1
 
-    host, port = parse_address(address)
+    packet = create_packet(conn,SYN =1)
 
-    conn.socket.connect((host, port))
+    conn.start()
+    logger.info(f'syn sending')
+    conn.socket.sendto(packet, conn.connected_address)
 
+    while True:
+        if not conn.running() or conn.timeout():
+            logger.warning(f'syn sending again')
+            conn.socket.sendto(packet, conn.connected_address)
+            conn.origin_address = conn.socket.getsockname()
+            conn.time_init =  time.time()
+            
+        if conn.waiter(180):
+            conn.time_init = conn.time_stop
+            logger.error(f'error sending')
+            raise ConnException()
+        
+        try:
+            address, protocol, _ = data_conn(conn)
+        except:
+            continue
+        
+        if protocol[17] == 1 and protocol[14] == 1 and get_bytes(protocol, 8, 12) == conn.seq + 1:
+            logger.info(f'syn-ack recived')
+            conn.seq = get_bytes(protocol, 8, 12)
+            conn.ack = get_bytes(protocol, 4, 8) + 1
+            conn.connected_address = address
+            conn.origin_address = conn.socket.getsockname()
+
+            logger.info(f'ack sending')
+            packet = create_packet(conn, ACK=1)
+            conn.socket.sendto(packet, conn.connected_address)
+            break
+    conn.time_init = conn.time_stop
     return conn
-
 
 def send(conn: Conn, data: bytes) -> int:
     pass
