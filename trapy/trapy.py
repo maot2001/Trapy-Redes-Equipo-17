@@ -5,12 +5,14 @@ from conn import *
 
 logger = logging.getLogger(__name__)
 
+
 def listen(address: str):
     conn = Conn()
     conn.origin_address = parse_address(address)
 
-    logger.info(f'socket binded to {address}')
     conn.socket.bind(conn.origin_address)
+    logger.info(f'socket binded to {address}')
+
     conn.socket.listen(10)
 
     return conn
@@ -25,7 +27,7 @@ def accept(conn: Conn):
         except:
             continue
 
-        if not protocol[14] == 1 or get_bytes(protocol, 8, 12) !=1:
+        if not protocol[14] == 1 or get_bytes(protocol, 8, 12) != 1:
             continue
 
         logger.info(f'syn recived')
@@ -36,12 +38,12 @@ def accept(conn: Conn):
         accept_conn.origin_address = conn.socket.getsockname()
         accept_conn.connected_address = address
 
-        accept_conn.ack = get_bytes(protocol, 4, 8) +1
+        accept_conn.ack = get_bytes(protocol, 4, 8) + 1
 
-        packet = create_packet(accept_conn, ACK = 1 , SYN = 1)
+        packet = create_packet(accept_conn, ACK=1, SYN=1)
 
         conn.start()
-        
+
         logger.info(f'syn-ack sending')
         accept_conn.socket.sendto(packet, accept_conn.connected_address)
 
@@ -61,7 +63,8 @@ def accept(conn: Conn):
             except:
                 continue
 
-            if get_bytes(protocol, 4, 8) != accept_conn.ack or get_bytes(protocol, 8, 12) != accept_conn.seq + 1 or not protocol[17] == 1:
+            if get_bytes(protocol, 4, 8) != accept_conn.ack or get_bytes(protocol, 8, 12) != accept_conn.seq + 1 or not \
+            protocol[17] == 1:
                 continue
 
             logger.info(f'ack recived')
@@ -69,7 +72,7 @@ def accept(conn: Conn):
             accept_conn.ack = get_bytes(protocol, 4, 8) + 1
             conn.time_init = conn.time_stop
             return accept_conn
-        
+
 
 def dial(address: str):
     conn = Conn()

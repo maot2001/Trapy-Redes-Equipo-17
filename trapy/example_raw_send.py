@@ -1,5 +1,7 @@
 import socket
-
+#IP Protocol IPv4
+#Raw Socket (Socket crudo)
+#El programa maneja el socket manualmente
 s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
 
 ip_header  = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
