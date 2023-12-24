@@ -13,9 +13,9 @@ class Conn:
         self.time_init: float = None
         self.time_stop: float = None  # TODO:Definir el tiempo de parada
         self.time_mark: float = None
-        self.time_estimated = 1
-        self.time_desviation = 0
-        self.time_interval = 1
+        self.time_estimated:float = 1
+        self.time_desviatio:float = 0
+        self.time_interval:float = 1
 
         if sock == None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
