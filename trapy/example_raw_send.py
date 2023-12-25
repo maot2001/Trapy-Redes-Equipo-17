@@ -17,4 +17,4 @@ tcp_header += b'\x50\x02\x71\x10' # Data Offset, Reserved, Flags | Window Size
 tcp_header += b'\xe6\x32\x00\x00' # Checksum | Urgent Pointer
 
 packet = ip_header + tcp_header
-s.sendto(packet, ('10.0.0.2', 0))
+s.sendto(packet, ('127.0.0.1', 8000))
