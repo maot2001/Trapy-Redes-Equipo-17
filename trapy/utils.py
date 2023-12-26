@@ -61,8 +61,9 @@ def create_packet(conn : Conn, seq = -1, ack = -1, ACK = 0, SYN = 0, FIN = 0, da
         c_addr, c_port = conn.socket.getsockname()
 
     ip_header = build_iph(o_addr, c_addr)
-    
-    if seq == -1: seq = conn.seq
+    #TODO: Hay que hacer esto desde que se crea el objeto COnn
+   # if seq == -1: seq = conn.seq
+    if seq ==-1 : seq=1
     if ack == -1: ack = conn.ack
     
     protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, ACK, SYN, FIN, data)

@@ -75,7 +75,7 @@ def accept(conn: Conn):
             return accept_conn
 
 
-def dial(address: str):
+def dial(address: str)->Conn:
     conn = Conn()
     conn.origin_address = conn.socket.getsockname()
     conn.connected_address = parse_address(address)
