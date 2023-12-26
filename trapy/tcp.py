@@ -1,7 +1,6 @@
 from flags import Flags
-from utils import int_to_bytes,bytes_to_int,calculate_checksum
+from trapy.converters_utils import bytes_to_int, int_to_bytes, calculate_checksum
 
-        
 
 class TCP_Header:
      

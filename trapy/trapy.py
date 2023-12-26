@@ -1,8 +1,7 @@
-import logging
-import time
+from trapy.converters_utils import parse_address, str_to_bytes
 from utils import *
 from conn import *
-import flags
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,126 +30,14 @@ def accept(conn: Conn):
 
 
 def dial(address: str)->Conn:
-    conn = Conn()
-    conn.origin_address = conn.socket.getsockname()
-    conn.connected_address = parse_address(address)
-    conn.ack = 1
-    flags=Flags()
-     
-    packet = conn.create_package( flags.make_connection())#SYN=1
-
-    conn.start()
-    logger.info(f'syn sending')
-    conn.socket.sendto(packet, conn.connected_address)
-
-    while True:
-        if not conn.running() or conn.time_out():
-            logger.warning(f'syn sending again')
-            conn.socket.sendto(packet, conn.connected_address)
-            conn.origin_address = conn.socket.getsockname()
-            conn.time_init = time.time()
-            
-        if conn.waiter(180):
-            conn.stop()
-            logger.error(f'error sending')
-            #TODO: Poner la exepcionraise ConnException()
-        
-        try:
-            address, protocol, _ = data_conn(conn)
-        except:
-            continue
-        
-        if protocol[17] == 1 and protocol[14] == 1 and get_bytes(protocol, 8, 12) == conn.seq + 1:
-            logger.info(f'syn-ack received')
-            conn.refresh(protocol)
-            conn.connected_address = address
-            conn.origin_address = conn.socket.getsockname()
-
-            logger.info(f'ack sending')
-            packet = create_packet(conn, ACK = 1)
-            conn.socket.sendto(packet, conn.connected_address)
-            break
-    conn.stop()
-    return conn
+ pass
 
 
 def send(conn: Conn, data: bytes) -> int:
-    
-    #Secuencia 
-    sequence=conn.seq
-    ack=conn.ack
-    times = 0
-    #Tramas
-    frames= pieces = [data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
-    
-    current={sequence:0}
-    
-    for i in range(current[conn.sequence_number], min(current[conn.sequence_number] + conn.windows_size, len(pieces))):
-         current[seq_num] = i
-       # Crear el paquete
-         package = conn.package(seq_num=seq_num,ack_num=conn.ack+i-current[conn.sequence_number],data=pieces[i])
-          
-                   #Enviamos el paquete
-                   #TODO:Verificar si se envia a la direccion correcta osea es una tupla ('direcciopon',puerto:int)
-         conn.socket.sendto(package, (conn.destination_address,0))
-         seq_num +=len(pieces[i])
-         conn.timer.start()
-         current[seq_num] = min(current[conn.sequence_number]+conn.windows_size, len(pieces))
-
+    pass
 def recv(conn: Conn, length: int) -> bytes:
-    buffer = b''
-    count = 0
 
-    conn.start()
-
-    while len(buffer) <length:
-        try:
-            _, protocol, data = data_conn(conn)
-        except:
-            if not conn.running() or conn.time_out():
-                count += 1
-
-                packet = create_packet(conn, ACK = 1)
-                conn.socket.sendto(packet, conn.connected_address)
-
-            if conn.waiter(30):
-                conn.stop()
-                logger.error(f'error receiving')
-                raise ConnException()
-            continue
-
-        if get_bytes(protocol, 4, 8) != conn.ack or get_bytes(protocol, 8, 12) != conn.seq + 1:
-            continue
-
-        if protocol[13] == 1:
-            conn.stop()
-            conn.refresh(protocol)
-            
-            packet = create_packet(conn, ACK = 1, FIN = 1)
-            conn.time_mark = time.time()
-            conn.socket.sendto(packet, conn.connected_address)
-            
-            conn.stop()
-            return buffer
-        else:
-            conn.time_mark = time.time()
-            conn.stop(count <= 2)
-
-            if len(buffer) + len(data) >= length:
-                data = data[:length - len(buffer)]
-
-            buffer += data
-            conn.seq = get_bytes(protocol, 8, 12)
-            conn.ack += len(data)
-            count = 0
-    
-    conn.stop()
-
-    if len(buffer) == length:
-        packet = create_packet(conn, ACK = 1, FIN = 1)
-        end(conn, packet)
-    
-    return buffer
+   pass
 
 
 def close(conn: Conn):

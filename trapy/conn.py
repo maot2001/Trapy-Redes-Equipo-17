@@ -104,9 +104,10 @@ class Conn:
         ip_header = make_ip_header(s_address, d_address)
         # TODO: Hay que hacer esto desde que se crea el objeto COnn
         # if seq == -1: seq = conn.seq
-        
-        if seq == -1: seq = 1
-        if ack == -1: ack = conn.ack
+        temp=0
+        if self.tcp_header.flags.ACK:temp=1
+        if seq_num == -1: seq = 1
+        if ack_num == -1: ack =temp
         protocol_header = make_protocol_header(s_port, d_port, seq_num if seq_num != -1 else self.seq,
                                                ack_num if ack_num != -1 else self.ack,
                                                self.windows_length, flags.ACK, flags.SYN, flags.FIN, data)
