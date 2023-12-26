@@ -1,4 +1,4 @@
-from trapy import TCP_Header, Flags
+
 
 
 def parse_address(address):
@@ -32,44 +32,7 @@ def int_to_bytes(number, size:int)->bytes:
     return number.to_bytes((size), "big")
 
 
-def Get_TCP_Header_From_IP_TCP_Headers(ip_header:bytes,tcp_header:bytes)->TCP_Header:
-    """
-    This function extracts TCP header information from IP and TCP headers.
 
-    Parameters:
-    ip_header (bytes): The IP header.
-    tcp_header (bytes): The TCP header.
-
-    Returns:
-    TCP_Header: An object containing the extracted TCP header information.
-    """
-    #Ips address
-    addr_source=ip_header[12:16]
-    addr_dest=ip_header[16:20]
-    #Ports
-    source_port = tcp_header[0:2]
-    dest_port = tcp_header[2:4]
-    #seq and ack number
-    secnumber = tcp_header[4:8]
-    acknumber =tcp_header[8:12]
-
-    #flags
-    flags = Flags()
-    flags.from_bytes_to_flags(tcp_header[13])
-
-    #windows size
-    recv_window = tcp_header[14:16]
-
-    tcp_header=TCP_Header(source_address=addr_source,
-                          destination_address=addr_dest,
-                          port_source=source_port,
-                          port_destination=dest_port,
-                          seq_number=secnumber,
-                          ack_number=acknumber,
-                          flags=flags,
-                          recv_window=recv_window)
-
-    return tcp_header
 
 
 def calculate_checksum(header:bytes) -> bytes:

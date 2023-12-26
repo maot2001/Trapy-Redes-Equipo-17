@@ -1,4 +1,4 @@
-from trapy.converters_utils import parse_address, str_to_bytes
+from converters_utils import parse_address, str_to_bytes
 from utils import *
 from conn import *
 
@@ -13,7 +13,7 @@ def listen(address: str,max_conn:int=10)->Conn:
     port_b=int_to_bytes(port,2)
     
     tcp_header=TCP_Header(source_address=addr_b,port_source=port_b,flags=Flags())
-    conn = Conn(tcp_header=tcp_header)
+    conn = Conn(tcp_header=tcp_header,is_server=True)
     #Ahora esta en modo servidor
    # conn.origin_address = parse_address(address)
     conn.connected_bounds=[None for _ in range(max_conn - 1)]

@@ -1,6 +1,6 @@
 import logging
 
-from trapy.converters_utils import Get_TCP_Header_From_IP_TCP_Headers, calculate_checksum
+from converters_utils import  calculate_checksum
 
 AUX = (1 << 16) - 1
 

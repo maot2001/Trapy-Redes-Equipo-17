@@ -1,4 +1,4 @@
-from enum import Enum
+
 
 class Flags:
     def __init__(self):
