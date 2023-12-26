@@ -119,8 +119,24 @@ def dial(address: str):
 
 def send(conn: Conn, data: bytes) -> int:
     
-    seq_init=conn.seq
-
+    #Secuencia 
+    sequence=conn.seq
+    ack=conn.ack
+    times = 0
+    #Tramas
+    frames= pieces = [data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
+    
+    current={sequence:0}
+    
+    for i in range(current[conn.sequence_number], min(current[conn.sequence_number] + conn.windows_size, len(pieces))):
+         current[seq_num] = i
+       # Crear el paquete
+        package = create_package(conn,seq_num=seq_num,ack_num=ack_num+i-current[conn.sequence_number],data=pieces[i])
+                    #Enviamos el paquete
+                    conn.socket.sendto(package, conn.destination_address)
+                    seq_num +=len(pieces[i])
+                conn.timer.start()
+                current[seq_num] = min(current[conn.sequence_number]+conn.windows_size, len(pieces))
 
 def recv(conn: Conn, length: int) -> bytes:
     buffer = b''

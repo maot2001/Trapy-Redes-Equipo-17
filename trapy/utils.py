@@ -94,6 +94,53 @@ def data_conn(conn : Conn):
     return ((ip, port), protocol, data)
 
 
+
+def make_frames(data:bytes,size:int)->list:
+     return[data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
+ 
+ #TODO:Make New
+ 
+def make_ip_header(source_ip, destination_ip):
+    ip_header = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
+    ip_header += b'\xab\xcd\x00\x00'  # Identification | Flags, Fragment Offset
+    ip_header += b'\x40\x06\xa6\xec'  # TTL, Protocol | Header Checksum   xff en protocol
+    source_ip = [int(i) for i in source_ip.split('.')]
+    destination_ip = [int(i) for i in destination_ip.split('.')]
+    ip_header += bytes(source_ip)  # Source Address
+    ip_header += bytes(destination_ip)  # Destination Address
+    return ip_header
+
+
+def make_protocol_header(sport, dport, seqnumber, acknumber, window_size, ACK = 0, SYN = 0, FIN = 0, data = b''):
+    tcp_header = sport.to_bytes(2, byteorder='big', signed=False) # Source Port
+    tcp_header += dport.to_bytes(2, byteorder='big', signed=False) # Destination Port
+    tcp_header += seqnumber.to_bytes(4, byteorder = 'big', signed = False)  # Sequence Number
+    tcp_header += acknumber.to_bytes(4, byteorder = 'big', signed = False)  # Acknowledgement Number
+    tcp_header += ((ACK<<4) + (SYN << 1) + (FIN)).to_bytes(2, byteorder='big', signed=False) # Flags
+    tcp_header += window_size.to_bytes(2, byteorder='big', signed=False) # Window Size
+    tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
+
+    checksum = sum_hex(data) + sum_hex(tcp_header)
+    checksum = U - (checksum & U)
+    checksum = checksum.to_bytes(2, byteorder='big', signed=False)
+
+    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]
+    return tcp_header + data
+
+ 
+def create_package(conn:Conn,seq_num=-1,ack_num=-1,ACK=0,SYN=0,FIN=0,data=b''):
+    s_address, s_port = conn.origin_address
+    d_address, d_port = conn.connected_address
+    if d_address == 'localhost':
+        d_address, d_port = conn.socket.getsockname()
+    ip_header = make_ip_header(s_address,d_address)
+    protocol_header = make_protocol_header(s_port,d_port,seq_num if seq_num != -1 else conn.sequence_number,ack_num if ack_num!=-1 else conn.ack_number, conn.windows_size,ACK,SYN,FIN,data)
+    return ip_header + protocol_header
+
+
+
+
+
 def end(conn : Conn, packet):
     if not packet:
         packet = create_packet(conn, FIN = 1, ACK = 1)

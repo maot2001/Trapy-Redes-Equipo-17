@@ -10,9 +10,9 @@ class Conn:
     Atributos
     ---------
     origin_address : type
-        Descripción de origin_address.
+       Address origen.
     connected_address : type
-        Descripción de connected_address.
+       Address Destino.
     ack : bytes
     
         Descripción de ack. 
