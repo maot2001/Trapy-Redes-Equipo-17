@@ -18,7 +18,8 @@ class Conn:
     seq : bytes
         Descripción de # secuencia.
     windows_length : int
-        Descripción de windows_length.
+        Descripción de windows_length.-
+        
     """
 
     def __init__(self, sock=None):
