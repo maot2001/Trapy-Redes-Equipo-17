@@ -1,4 +1,10 @@
 import sys, getopt
+import sys
+sys.path.append("/home/Codes/redes/Trapy-Redes-Equipo-17/trapy")
+
+
+
+
 from trapy import listen, accept, send, recv, close
 #from socket_trapy import *
 

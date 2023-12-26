@@ -1,8 +1,10 @@
-from conn import Conn
-import flags
+import logging
+from flags import Flags
+from tcp import TCP_Header
 AUX = (1 << 16) - 1
 
-
+# Configura el logger para que registre los mensajes en un archivo
+logging.basicConfig(filename='app.log', level=logging.INFO)
 def parse_address(address):
     host, port = address.split(':')
 
@@ -67,22 +69,75 @@ def corrupt(protocol, data):
     return recv_checksum != exp_checksum
 
 
-def data_conn(conn : Conn):
-    try:
-        packet, _ = conn.socket.recvfrom(1024)
-    except:
-        return None
+import struct
 
-    ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
-    if corrupt(protocol , data):
-        return None
+def verify_ip_checksum(ip_header:bytes):
+    """_summary_
+    Este código define una función verify_ip_checksum() que toma una cabecera IP
+    en bytes como argumento. Desempaqueta la cabecera IP, obtiene el checksum de la
+    cabecera IP, crea una versión de la cabecera IP con el checksum a cero, calcula 
+    el checksum y comprueba si el checksum recibido es igual al checksum calculado
+    . 
+    Args:
+        ip_header (bytes): _description_
+
+    Returns:
+        Bool: Devuelve True si el checksum es correcto y False en caso contrario.
+    """
+    # Desempaqueta la cabecera IP
+    unpacked_ip_header = struct.unpack('!BBHHHBBH4s4s', ip_header)
+
+    # Obtiene el checksum de la cabecera IP
+    received_checksum = unpacked_ip_header[5]
+
+    # Crea una versión de la cabecera IP con el checksum a cero
+    zeroed_ip_header = struct.pack('!BBHHHBBH4s4s', *unpacked_ip_header[:5], 0, *unpacked_ip_header[6:])
+
+    # Calcula el checksum
+    calculated_checksum = 0
+    for i in range(0, len(zeroed_ip_header), 2):
+        calculated_checksum += (zeroed_ip_header[i] << 8) + zeroed_ip_header[i+1]
+    calculated_checksum = (calculated_checksum >> 16) + (calculated_checksum & 0xffff)
+    calculated_checksum += calculated_checksum >> 16
+    calculated_checksum = ~calculated_checksum & 0xffff
+
+    # Comprueba si el checksum recibido es igual al checksum calculado
+    return received_checksum == calculated_checksum
+
+
+def verify_tcp_checksum(tcp_header:bytes):
+    """_summary_
+    Este código define una función verify_tcp_checksum() que toma una cabecera 
+    TCP en bytes como argumento. Desempaqueta la cabecera TCP, obtiene el checksum
+    de la cabecera TCP, crea una versión de la cabecera TCP con el checksum a cero,
+    calcula el checksum y comprueba si el checksum recibido es igual al checksum calculado.
     
-    ip = '.'.join(map(str, ip_header[12:16]))
-    port = int.from_bytes(protocol[:2], byteorder='big', signed=False)
 
-    return ((ip, port), protocol, data)
+    Args:
+        tcp_header (bytes): Cabecera Tcp
 
+    Returns:
+        Bool: Devuelve True si el checksum es correcto y False en caso contrario.
+    """
+    # Desempaqueta la cabecera TCP
+    unpacked_tcp_header = struct.unpack('!HHLLBBHHH', tcp_header)
 
+    # Obtiene el checksum de la cabecera TCP
+    received_checksum = unpacked_tcp_header[6]
+
+    # Crea una versión de la cabecera TCP con el checksum a cero
+    zeroed_tcp_header = struct.pack('!HHLLBBHHH', *unpacked_tcp_header[:6], 0, *unpacked_tcp_header[7:])
+
+    # Calcula el checksum
+    calculated_checksum = 0
+    for i in range(0, len(zeroed_tcp_header), 2):
+        calculated_checksum += (zeroed_tcp_header[i] << 8) + zeroed_tcp_header[i+1]
+    calculated_checksum = (calculated_checksum >> 16) + (calculated_checksum & 0xffff)
+    calculated_checksum += calculated_checksum >> 16
+    calculated_checksum = ~calculated_checksum & 0xffff
+
+    # Comprueba si el checksum recibido es igual al checksum calculado
+    return received_checksum == calculated_checksum
 
 def make_frames(data:bytes,size:int)->list:
      return[data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
@@ -135,6 +190,67 @@ def make_protocol_header(source_port, destination_port, seqnumber, acknumber, wi
 
 
 #TODO:ADD From Marcos
+
+def unpack(packet:bytes):
+    """
+    Desempaqueta un paquete de bytes en sus componentes principales: cabecera IP, cabecera TCP y datos.
+    
+    Args:
+        packet (bytes): El paquete de bytes a desempaquetar.
+    
+    Returns:
+        tuple: Una tupla que contiene la cabecera IP, la cabecera TCP y los datos del paquete.
+               Si el paquete es demasiado pequeño o los checksums son inválidos, se devuelve None.
+    """
+  
+    if(len(packet)<40):
+        # Si es menor de 40 bytes no se puede desempaquetar
+        # la trama está dañada
+        logging.error(f"Imposible desempaquetar, demasiado pequeño({len(packet)})")
+        return None
+    
+    ip_header, tcp_header, data = packet[0:20], packet[20:40], packet[40:]
+    
+    # Chequear el checksum del IP
+    if(not verify_ip_checksum(ip_header)):
+        logging.error(f"Checksum inválido del IP")
+        return None
+    
+    # Chequear el checksum del TCP
+    if(not verify_tcp_checksum(tcp_header)):
+        logging.error(f"Checksum inválido del TCP")
+        return None
+    
+    return ip_header, tcp_header, data
+
+
+
+def Get_TCP_Header_From_IP_TCP_Headers(ip_header:bytes,tcp_header:bytes)->TCP_Header:
+       
+        addr_source=ip_header[12:16]
+        addr_dest=ip_header[16:20]
+        
+        source_port = tcp_header[0:2]
+        dest_port = tcp_header[2:4]
+        secnumber = tcp_header[4:8]
+        acknumber =tcp_header[8:12]
+        recv_window = tcp_header[14:16]
+        flags = from_bytes_to_flags(tcp_header[13])
+        tcp_header=TCP_Header(origin_address=addr_source,
+                              connected_address=addr_dest,
+                              port_source=source_port,
+                              port_destination=dest_port,
+                              seq_number=secnumber,
+                              ack_number=acknumber,
+                              flags=flags,)
+        
+        
+        
+        
+        
+
+
+
 """
 def end(conn : Conn, packet):
     if not packet:

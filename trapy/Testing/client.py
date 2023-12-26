@@ -1,3 +1,6 @@
+
+import sys
+sys.path.append("/home/Codes/redes/Trapy-Redes-Equipo-17/trapy")
 from trapy import close, recv, dial, send
 #from socket_trapy import *
 

@@ -7,15 +7,13 @@ logger = logging.getLogger(__name__)
 
 
 
-def listen(address: str):
-    conn = Conn()
-    conn.origin_address = parse_address(address)
-    print(conn.origin_address)
-    conn.socket.bind(('127.0.0.1',8000))
-   
-    logger.info(f'socket binded to {address}')
-
-   # conn.socket.listen(10)
+def listen(address: str,max_conn:int=10)->Conn:
+    tcp_header=TCP_Header(origin_address=parse_address(address),flags=Flags())
+    conn = Conn(tcp_header=tcp_header)
+    #Ahora esta en modo servidor
+   # conn.origin_address = parse_address(address)
+    conn.connected_bounds=[None for _ in range(max_conn - 1)]
+  
 
     return conn
 
@@ -25,7 +23,7 @@ def accept(conn: Conn):
 
     while True:
         try:
-            address, protocol, _ = data_conn(conn)
+            address, protocol, _ = conn.data_conn()
         except:
             continue
 
@@ -34,15 +32,17 @@ def accept(conn: Conn):
 
         logger.info(f'syn received')
         conn.stop()
-
-        accept_conn = Conn()
-
-        accept_conn.origin_address = conn.origin_address
-        accept_conn.connected_address = address
-
-        accept_conn.ack = get_bytes(protocol, 4, 8) + 1
-
-        packet = create_packet(accept_conn, ACK = 1, SYN = 1)
+        flags=Flags()
+         #ACK = 1, SYN = 1
+        flags.hand_shake_ACK()
+        accept_conn_tcp_header=TCP_Header(origin_address=conn.origin_address,
+                                   connected_address=address,
+                                   flags=flags,
+                                   ack_number=get_bytes(protocol, 4, 8) + 1
+                                   )
+        accept_conn = Conn(accept_conn_tcp_header)
+           
+        packet = accept_conn.create_package()
 
         conn.start()
 
@@ -80,8 +80,9 @@ def dial(address: str)->Conn:
     conn.origin_address = conn.socket.getsockname()
     conn.connected_address = parse_address(address)
     conn.ack = 1
-
-    packet = create_packet(conn, SYN = 1)
+    flags=Flags()
+     
+    packet = conn.create_package( flags.make_connection())#SYN=1
 
     conn.start()
     logger.info(f'syn sending')

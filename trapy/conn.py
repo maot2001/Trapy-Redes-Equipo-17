@@ -1,8 +1,12 @@
+import logging
 import socket
 import time
-from utils import get_bytes, make_ip_header, make_protocol_header
+from utils import get_bytes, make_ip_header,make_protocol_header,unpack
 from flags import Flags
+from tcp import TCP_Header
 
+# Configura el logger para que registre los mensajes en un archivo
+logging.basicConfig(filename='app.log', level=logging.INFO)
 
 class Conn:
     """
@@ -24,11 +28,12 @@ class Conn:
         
     """
 
-    def __init__(self, sock=None):
-        self.origin_address = None
-        self.connected_address = None
-        self.ack: bytes = None
-        self.seq: bytes = None
+    def __init__(self,tcp_header:TCP_Header, sock=None):
+       # self.origin_address = None
+        #self.connected_address = None
+        #self.ack: bytes = None
+        #self.seq: bytes = None
+        self.tcp_header:TCP_Header=tcp_header
         self.windows_length = 4
 
         self.time_init: float = None
@@ -38,6 +43,7 @@ class Conn:
         self.time_desviation: float = 0
         self.time_interval: float = 1
 
+        self.connected_bounds:list=[]
         if sock == None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
         self.socket = sock
@@ -86,6 +92,7 @@ class Conn:
         ip_header = make_ip_header(s_address, d_address)
         # TODO: Hay que hacer esto desde que se crea el objeto COnn
         # if seq == -1: seq = conn.seq
+        
         if seq == -1: seq = 1
         if ack == -1: ack = conn.ack
         protocol_header = make_protocol_header(s_port, d_port, seq_num if seq_num != -1 else self.seq,
@@ -93,6 +100,54 @@ class Conn:
                                                self.windows_length, flags.ACK, flags.SYN, flags.FIN, data)
         return ip_header + protocol_header
 
+   
+    """
+    def data_conn(self):
+        try:
+            #Se recibe un paquete de 1024 bytes
+            packet, _ = self.socket.recvfrom(1024)
+        except:
+            logging.info('Error al recibir el paquete')
+            return None
+
+        #TODO:Revisar el checkSum
+        
+        ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
+        if corrupt(protocol , data):
+            return None
+        
+        #ip = '.'.join(map(str, ip_header[12:16]))
+        ip_source=get_address_from_bytes(ip_header[12:16])
+        ip_dest=get_address_from_bytes(ip_header[16:20])
+        
+        port = int.from_bytes(protocol[:2], byteorder='big', signed=False)
+
+        return ((ip_source, port), protocol, data)
+        
+   """
+    def data_conn(self):
+        try:
+            #Se recibe un paquete de 1024 bytes
+            packet, _ = self.socket.recvfrom(1024)
+        except:
+            logging.info('Error al recibir el paquete')
+            return None
+
+       
+        #Devuelve las cabezeras de ip, tcp y los dato, hace las comprobaciones del checksum 
+        ip_header,tcp_header, data = unpack(packet)
+        
+        
+        
+         TCP_Header()
+        port_source=
+        
+       
+
+   
+   
+    
+   
     class ConnException(Exception):
         pass
     # TODO: Implementar excepciones
