@@ -84,7 +84,7 @@ def data_conn(conn : Conn):
         return None
 
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
-
+#MVJC
     if corrupt(protocol , data):
         return None
     
