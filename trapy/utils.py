@@ -14,6 +14,27 @@ def parse_address(address):
     return host, int(port)
 
 
+
+def str_to_bytes(value:str)->bytes:
+   return value.encode('utf-8')
+
+
+def bytes_to_int(b:bytes):
+    return int.from_bytes(b, "big")
+
+def int_to_bytes(number, size:int)->bytes:
+    """
+    Converts an integer to a byte array of specified size.
+
+    Args:
+        number (int): The integer to convert.
+        size (int): The size of the resulting byte array.
+
+    Returns:
+        bytes: The byte array representation of the integer.
+    """
+    return number.to_bytes((size), "big")
+
 def get_bytes(protocol, init, end):
     return int.from_bytes(protocol[init : end], byteorder = 'big', signed = False)
 
@@ -26,47 +47,6 @@ def hex(arr):
 
 
 
-#TODO:Revisar para despues eliminar
-def build_iph(origin_ip, connected_ip):
-    ip_header = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
-    ip_header += b'\xab\xcd\x00\x00'  # Identification | Flags, Fragment Offset
-    ip_header += b'\x40\x06\xa6\xec'  # TTL, Protocol | Header Checksum   xff en protocol
-    origin_ip = [int(i) for i in origin_ip.split('.')]
-    connected_ip = [int(i) for i in connected_ip.split('.')]
-    ip_header += bytes(origin_ip)  # Source Address
-    ip_header += bytes(connected_ip)  # Destination Address
-    return ip_header
-
-#TODO:Revisar para despues eliminar
-def build_protocolh(o_port, c_port, seq, ack, windows_length, ACK = 0, SYN = 0, FIN = 0, data = b''):
-    tcp_header = o_port.to_bytes(2, byteorder = 'big', signed = False)  # Source Port
-    tcp_header += c_port.to_bytes(2, byteorder = 'big', signed = False)  # Destination Port
-    tcp_header += seq.to_bytes(4, byteorder = 'big', signed = False)  # Sequence Number
-    tcp_header += ack.to_bytes(4, byteorder = 'big', signed = False)  # Acknowledgement Number
-    tcp_header += ((ACK << 4) + (SYN << 1) + (FIN)).to_bytes(2, byteorder = 'big', signed = False)  # Flags
-    tcp_header += windows_length.to_bytes(2, byteorder = 'big', signed = False)  # Window Size
-    tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
-
-    checksum = hex(data) + hex(tcp_header)
-    checksum = AUX - (checksum & AUX)
-    checksum = checksum.to_bytes(2, byteorder = 'big', signed = False)
-
-    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]
-    return tcp_header + data
-
-
-
-
-
-def corrupt(protocol, data):
-    recv_checksum = int.from_bytes(protocol[16:18], byteorder = 'big', signed = False)
-    
-    protocol_aux = protocol[:16]
-    protocol += b'\x00\x00\x00\x00'
-    
-    exp_checksum = hex(data) + hex(protocol_aux)
-    exp_checksum = AUX - (exp_checksum & AUX)
-    return recv_checksum != exp_checksum
 
 
 import struct
@@ -255,8 +235,8 @@ def Get_TCP_Header_From_IP_TCP_Headers(ip_header:bytes,tcp_header:bytes)->TCP_He
     #windows size
     recv_window = tcp_header[14:16]
 
-    tcp_header=TCP_Header(origin_address=addr_source,
-                          connected_address=addr_dest,
+    tcp_header=TCP_Header(source_address=addr_source,
+                          destination_address=addr_dest,
                           port_source=source_port,
                           port_destination=dest_port,
                           seq_number=secnumber,
@@ -270,6 +250,21 @@ def Get_TCP_Header_From_IP_TCP_Headers(ip_header:bytes,tcp_header:bytes)->TCP_He
         
 
 
+
+def calculate_checksum(header:bytes) -> bytes:
+    checksum = 0
+    for i in range(int(len(header)/2)):
+        header_16b = header[i*2:(i*2)+2]
+        header_num = int.from_bytes(header_16b, "big")
+        checksum += header_num
+    
+    while checksum > (2**16 - 1):
+        checksum_bytes = checksum.to_bytes(4, "big")
+        carry_bytes, checksum_bytes = checksum_bytes[0:2], checksum_bytes[2:4]
+        carry, checksum = int.from_bytes(carry_bytes, "big"), int.from_bytes(checksum_bytes, "big")
+        checksum += carry
+    
+    return (~checksum + 2**16).to_bytes(2, "big") 
 
 """
 def end(conn : Conn, packet):

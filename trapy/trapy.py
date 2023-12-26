@@ -8,7 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 def listen(address: str,max_conn:int=10)->Conn:
-    tcp_header=TCP_Header(origin_address=parse_address(address),flags=Flags())
+    
+    addr,port=parse_address(address)
+    addr_b=str_to_bytes(addr)
+    port_b=int_to_bytes(port,2)
+    
+    tcp_header=TCP_Header(source_address=addr_b,port_source=port_b,flags=Flags())
     conn = Conn(tcp_header=tcp_header)
     #Ahora esta en modo servidor
    # conn.origin_address = parse_address(address)
@@ -19,60 +24,10 @@ def listen(address: str,max_conn:int=10)->Conn:
 
 
 def accept(conn: Conn):
-    conn.start()
+    
+        return conn.data_conn_Acept()
 
-    while True:
-        try:
-            address, protocol, _ = conn.data_conn()
-        except:
-            continue
-
-        if not protocol[14] == 1 or get_bytes(protocol, 8, 12) != 1:
-            continue
-
-        logger.info(f'syn received')
-        conn.stop()
-        flags=Flags()
-         #ACK = 1, SYN = 1
-        flags.hand_shake_ACK()
-        accept_conn_tcp_header=TCP_Header(origin_address=conn.origin_address,
-                                   connected_address=address,
-                                   flags=flags,
-                                   ack_number=get_bytes(protocol, 4, 8) + 1
-                                   )
-        accept_conn = Conn(accept_conn_tcp_header)
-           
-        packet = accept_conn.create_package()
-
-        conn.start()
-
-        logger.info(f'syn-ack sending')
-        accept_conn.socket.sendto(packet, accept_conn.connected_address)
-
-        while True:
-            if not accept_conn.running() or accept_conn.timeout():
-                logger.warning(f'syn-ack sending again')
-                accept_conn.socket.sendto(packet, accept_conn.connected_address)
-                accept_conn.origin_address = conn.origin_address
-
-            if accept_conn.waiter(180):
-                accept_conn.stop()
-                logger.error(f'error sending')
-                raise ConnException()
-
-            try:
-                address, protocol, _ = data_conn(accept_conn)
-            except:
-                continue
-
-            if get_bytes(protocol, 4, 8) != accept_conn.ack or get_bytes(protocol, 8, 12) != accept_conn.seq + 1 or \
-            not protocol[17] == 1:
-                continue
-
-            logger.info(f'ack received')
-            accept_conn.refresh(protocol)
-            accept_conn.stop()
-            return accept_conn
+        
 
 
 def dial(address: str)->Conn:
@@ -89,7 +44,7 @@ def dial(address: str)->Conn:
     conn.socket.sendto(packet, conn.connected_address)
 
     while True:
-        if not conn.running() or conn.timeout():
+        if not conn.running() or conn.time_out():
             logger.warning(f'syn sending again')
             conn.socket.sendto(packet, conn.connected_address)
             conn.origin_address = conn.socket.getsockname()
@@ -152,7 +107,7 @@ def recv(conn: Conn, length: int) -> bytes:
         try:
             _, protocol, data = data_conn(conn)
         except:
-            if not conn.running() or conn.timeout():
+            if not conn.running() or conn.time_out():
                 count += 1
 
                 packet = create_packet(conn, ACK = 1)
