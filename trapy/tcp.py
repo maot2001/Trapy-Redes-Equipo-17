@@ -11,8 +11,8 @@ class TCP_Header:
                  ack_number:bytes=None
                  ,seq_number:bytes=None,
                  port_source:bytes=None,
-                 port_destination:bytes=None
-                 
+                 port_destination:bytes=None,
+                 recv_window:bytes=None
                  ) :
         self.origin_address:bytes = origin_address
         self.connected_address:bytes = connected_address
@@ -21,6 +21,7 @@ class TCP_Header:
         self.flags:Flags=flags
         self.port_source:bytes=port_source
         self.port_destination:bytes=port_destination
+        self.recv_window=recv_window
         
    
     

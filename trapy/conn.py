@@ -28,25 +28,30 @@ class Conn:
         
     """
 
-    def __init__(self,tcp_header:TCP_Header, sock=None):
-       # self.origin_address = None
-        #self.connected_address = None
-        #self.ack: bytes = None
-        #self.seq: bytes = None
-        self.tcp_header:TCP_Header=tcp_header
-        self.windows_length = 4
+    def __init__(self,tcp_header:TCP_Header,is_server:bool, sock=None):
+            """
+            Initializes a connection object.
 
-        self.time_init: float = None
-        self.time_stop: float = None  # TODO:Definir el tiempo de parada
-        self.time_mark: float = None
-        self.time_estimated: float = 1
-        self.time_desviation: float = 0
-        self.time_interval: float = 1
+            Args:
+                tcp_header (TCP_Header): The TCP header object.
+                is_server (bool): Indicates whether the connection is for a server or client.
+                sock (socket, optional): The socket object. Defaults to None.
+            """
+            self.is_server:bool=
+            self.tcp_header:TCP_Header=tcp_header
+            self.windows_length = 4
 
-        self.connected_bounds:list=[]
-        if sock == None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-        self.socket = sock
+            self.time_init: float = None
+            self.time_stop: float = None  # TODO:Definir el tiempo de parada
+            self.time_mark: float = None
+            self.time_estimated: float = 1
+            self.time_desviation: float = 0
+            self.time_interval: float = 1
+
+            self.connected_bounds:list=[]
+            if sock == None:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
+            self.socket = sock
 
     def start(self):
         now = time.time()
@@ -134,13 +139,11 @@ class Conn:
             return None
 
        
-        #Devuelve las cabezeras de ip, tcp y los dato, hace las comprobaciones del checksum 
-        ip_header,tcp_header, data = unpack(packet)
+        #Devuelve TCP_Header y los datos, hace las comprobaciones del checksum 
+        TCP_Header, data = unpack(packet)
         
         
         
-         TCP_Header()
-        port_source=
         
        
 
