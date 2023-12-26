@@ -1,5 +1,6 @@
 import socket
 import time
+from utils import get_bytes
 
 
 class Conn:
@@ -32,21 +33,25 @@ class Conn:
         self.time_init: float = None
         self.time_stop: float = None  # TODO:Definir el tiempo de parada
         self.time_mark: float = None
-        self.time_estimated:float = 1
-        self.time_desviatio:float = 0
-        self.time_interval:float = 1
+        self.time_estimated: float = 1
+        self.time_desviation: float = 0
+        self.time_interval: float = 1
 
         if sock == None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
         self.socket = sock
 
+
     def start(self):
         now = time.time()
-        self.time_init = now
         self.time_mark = now
+        if self.time_init == self.time_stop:
+            self.time_init = now
+
 
     def running(self):
         return self.time_init != self.time_stop  # TODO: ????
+
 
     def timeout(self):
         if time.time() - self.time_init >= self.time_interval:
@@ -56,8 +61,27 @@ class Conn:
             return True
         return False
 
+
     def waiter(self, time_wait):
         return self.running() and time.time() - self.time_mark >= time_wait
+
+
+    def stop(self, retime = True):
+        if retime:
+            elapsed = time.time() - self.time_init
+            self.time_estimated *= 7 / 8
+            self.time_estimated += elapsed / 8
+
+            self.time_desviation *= 3 / 4
+            self.time_desviation += abs(elapsed - self.time_estimated) / 4
+
+            self.time_interval = self.time_estimated + 4 * self.time_desviation
+        self.time_init = self.time_stop
+
+
+    def refresh(self, protocol):
+        self.seq = get_bytes(protocol, 8, 12)
+        self.ack = get_bytes(protocol, 4, 8) + 1
 
 
 class ConnException(Exception):
