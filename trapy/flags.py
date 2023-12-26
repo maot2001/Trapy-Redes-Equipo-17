@@ -5,8 +5,14 @@ class Flags:
         self.ACK = 0
         self.SYN = 0
         self.FIN = 0
-  
-    
+        self.RST = 0
+        self.LAS = 0
+        self.CWR = 0
+        self.ECE = 0
+        self.URG = 0
+        
+        
+     
     def make_connection(self):
         """
         Establece la conexión inicializando el atributo SYN a 1.
@@ -55,6 +61,17 @@ class Flags:
                     self.ACK=1
                 if flag == "fin":
                     self.FIN=1
+                if flag == "rst":
+                    self.RST=1
+                if flag == "las":
+                    self.LAS=1
+                if flag == "cwr":
+                    self.CWR=1
+                if flag == "ece":
+                    self.ECE=1
+                if flag == "urg":
+                    self.URG=1
+            
                 
         
         
