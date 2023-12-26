@@ -49,6 +49,12 @@ class Flags:
         num = int.from_bytes(flags_bytes, "big") if isinstance(flags_bytes, bytes) else flags_bytes
         for bit, flag in flags:
             if num & bit:
-                on_flags.add(flag)
+                if flag == "syn":
+                    self.SYN=1
+                if flag == "ack":
+                    self.ACK=1
+                if flag == "fin":
+                    self.FIN=1
+                
         
         
