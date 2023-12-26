@@ -1,9 +1,5 @@
 # Trapy
 
-> Mi Nombre Es La Tiza (ymicorret@mbien.com)
-
-Mi proyecto por supuesto que es la tiza.
-
 ## Recomendaciones
 
 ### Editor de texto
