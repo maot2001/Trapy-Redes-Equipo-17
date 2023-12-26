@@ -2,7 +2,7 @@ import logging
 import time
 from utils import *
 from conn import *
-
+import flags
 logger = logging.getLogger(__name__)
 
 
@@ -10,11 +10,12 @@ logger = logging.getLogger(__name__)
 def listen(address: str):
     conn = Conn()
     conn.origin_address = parse_address(address)
-
-    conn.socket.bind(conn.origin_address)
+    print(conn.origin_address)
+    conn.socket.bind(('127.0.0.1',8000))
+   
     logger.info(f'socket binded to {address}')
 
-    conn.socket.listen(10)
+   # conn.socket.listen(10)
 
     return conn
 
@@ -96,7 +97,7 @@ def dial(address: str):
         if conn.waiter(180):
             conn.stop()
             logger.error(f'error sending')
-            raise ConnException()
+            #TODO: Poner la exepcionraise ConnException()
         
         try:
             address, protocol, _ = data_conn(conn)
@@ -131,12 +132,14 @@ def send(conn: Conn, data: bytes) -> int:
     for i in range(current[conn.sequence_number], min(current[conn.sequence_number] + conn.windows_size, len(pieces))):
          current[seq_num] = i
        # Crear el paquete
-        package = create_package(conn,seq_num=seq_num,ack_num=ack_num+i-current[conn.sequence_number],data=pieces[i])
-                    #Enviamos el paquete
-                    conn.socket.sendto(package, conn.destination_address)
-                    seq_num +=len(pieces[i])
-                conn.timer.start()
-                current[seq_num] = min(current[conn.sequence_number]+conn.windows_size, len(pieces))
+         package = conn.package(seq_num=seq_num,ack_num=conn.ack+i-current[conn.sequence_number],data=pieces[i])
+          
+                   #Enviamos el paquete
+                   #TODO:Verificar si se envia a la direccion correcta osea es una tupla ('direcciopon',puerto:int)
+         conn.socket.sendto(package, (conn.destination_address,0))
+         seq_num +=len(pieces[i])
+         conn.timer.start()
+         current[seq_num] = min(current[conn.sequence_number]+conn.windows_size, len(pieces))
 
 def recv(conn: Conn, length: int) -> bytes:
     buffer = b''
@@ -202,4 +205,4 @@ def close(conn: Conn):
 
 
 
-listen("127.0.0.1:8000")
+dial("127.0.0.1:8000")
