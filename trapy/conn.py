@@ -3,11 +3,29 @@ import time
 
 
 class Conn:
+    """
+    Esta es la clase Conn. Aquí puedes describir la clase.
+
+    Atributos
+    ---------
+    origin_address : type
+        Descripción de origin_address.
+    connected_address : type
+        Descripción de connected_address.
+    ack : bytes
+    
+        Descripción de ack. 
+    seq : bytes
+        Descripción de # secuencia.
+    windows_length : int
+        Descripción de windows_length.
+    """
+
     def __init__(self, sock=None):
         self.origin_address = None
         self.connected_address = None
-        self.ack = None
-        self.seq = None
+        self.ack:bytes = None
+        self.seq:bytes = None
         self.windows_length = 4
 
         self.time_init: float = None

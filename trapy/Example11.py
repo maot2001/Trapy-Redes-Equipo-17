@@ -51,7 +51,10 @@ while True:
     data, addr = s.recvfrom(65565)
     print('Received from:', addr)
     print('Received data:', data)
+  
     """
+    
+    
 import socket
 
     # Crear un socket

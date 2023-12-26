@@ -119,8 +119,9 @@ def dial(address: str):
     return conn
 
 def send(conn: Conn, data: bytes) -> int:
-    pass
-
+    
+    seq_init=conn.seq
+    
 
 def recv(conn: Conn, length: int) -> bytes:
     pass
