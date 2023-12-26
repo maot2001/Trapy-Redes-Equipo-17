@@ -24,7 +24,7 @@ def hex(arr):
 
 
 
-
+#TODO:Revisar para despues eliminar
 def build_iph(origin_ip, connected_ip):
     ip_header = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
     ip_header += b'\xab\xcd\x00\x00'  # Identification | Flags, Fragment Offset
@@ -35,7 +35,7 @@ def build_iph(origin_ip, connected_ip):
     ip_header += bytes(connected_ip)  # Destination Address
     return ip_header
 
-
+#TODO:Revisar para despues eliminar
 def build_protocolh(o_port, c_port, seq, ack, windows_length, ACK = 0, SYN = 0, FIN = 0, data = b''):
     tcp_header = o_port.to_bytes(2, byteorder = 'big', signed = False)  # Source Port
     tcp_header += c_port.to_bytes(2, byteorder = 'big', signed = False)  # Destination Port
@@ -53,21 +53,7 @@ def build_protocolh(o_port, c_port, seq, ack, windows_length, ACK = 0, SYN = 0, 
     return tcp_header + data
 
 
-def create_packet(conn : Conn, seq = -1, ack = -1, ACK = 0, SYN = 0, FIN = 0, data = b''):
-    o_addr, o_port = conn.origin_address
-    c_addr, c_port = conn.connected_address
 
-    if c_addr == 'localhost':
-        c_addr, c_port = conn.socket.getsockname()
-
-    ip_header = build_iph(o_addr, c_addr)
-    #TODO: Hay que hacer esto desde que se crea el objeto COnn
-   # if seq == -1: seq = conn.seq
-    if seq ==-1 : seq=1
-    if ack == -1: ack = conn.ack
-    
-    protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, ACK, SYN, FIN, data)
-    return ip_header + protocol_header
 
 
 def corrupt(protocol, data):
