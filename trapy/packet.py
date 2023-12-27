@@ -13,17 +13,6 @@ def create_flags(ack = False, syn = False, end = False, last_pack = False):
 
     return flags
 
-def create_syn_packet(source_port, dest_port, seq_num, ack, source_ip, dest_ip):
-    flags = create_flags(ack=False, syn=True)
-    packet = Packet(source_port, dest_port, seq_num, ack, source_ip, dest_ip, flags)
-    packet = packet.pack()
-    return packet
-
-def create_ack_packet(conn, ack):
-    flags = create_flags(ack=True)
-    packet = Packet(conn.source_port, conn.dest_port, conn.seq_num, ack, conn.source_ip, conn.dest_ip, flags)
-    packet = packet.pack()
-    return packet
 
 def create_send_packet(conn, seq_num, ack, data):
     flags = create_flags(ack=False, syn=True)
@@ -37,38 +26,6 @@ def create_last_send_packet(conn, seq_num, ack, data):
     packet = packet.pack()
     return packet
 
-def create_synack_packet(syn_pack):
-    pack = Packet()    
-    pack.source_port = syn_pack.dest_port
-    pack.dest_port = syn_pack.source_port
-    pack.seq_num = syn_pack.ack
-    pack.ack = syn_pack.seq_num + 1
-    pack.source_ip = syn_pack.dest_ip
-    pack.dest_ip = syn_pack.source_ip
-    pack.flags = create_flags(ack = True, syn = True)
-    pack.data = syn_pack.data
-    pack = pack.pack()
-
-    return pack
-
-def create_confirmation_packet(synack_pack):
-    pack = Packet()
-    pack.source_port = synack_pack.dest_port
-    pack.dest_port = synack_pack.source_port
-    pack.seq_num = synack_pack.ack
-    pack.ack = synack_pack.seq_num + 1
-    pack.source_ip = synack_pack.dest_ip
-    pack.dest_ip = synack_pack.source_ip
-    pack.flags = create_flags(ack = True)
-    pack = pack.pack()
-
-    return pack
-
-def create_close_packet(conn):
-    flags = create_flags(ack=False, syn=False, end = True)
-    pack = Packet(conn.source_port, conn.dest_port, conn.seq_num, conn.ack, conn.source_ip, conn.dest_ip, flags)
-    pack = pack.pack()
-    return pack
 
 def my_unpack(packed_data):
     ipHeader = packed_data[0:20]

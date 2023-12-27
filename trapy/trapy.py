@@ -6,8 +6,7 @@ from utils import *
 from conn import *
 import threading
 import time
-import packet
-
+from packet import *
 from timer import Timer
 logger = logging.getLogger(__name__)
 
@@ -155,98 +154,7 @@ def dial(address: str) -> Conn:
     return conn
 
 
-SLEEP_INTERVAL = 0.05
-TIMEOUT_INTERVAL = 0.5
 
-END_CONN_INTERVAL = 5
-end_conn_timer = False
-
-
-base = 0
-send_timer = Timer(TIMEOUT_INTERVAL)
-mutex = threading.Lock()
-
-
-def send(conn:Conn, data):
-    global mutex
-    global base
-    global send_timer
-
-    sock = conn.sock(conn)
-
-    RECEIVER_ADDR = (conn.dest_ip, conn.dest_port)
-
-    packets = create_packet(conn, data)
-    num_packets = len(packets)
-    window_size = set_window_size(num_packets)
-    next_to_send = 0
-    base = 0
-
-    threading.Thread(target=receive, args=(sock,)).start()
-    threading.Thread(target=countdown, args=(END_CONN_INTERVAL,)).start()
-
-    while base < num_packets:
-        
-        mutex.acquire()
-        while next_to_send < base + window_size:
-            unpacked = packet.my_unpack(packets[next_to_send])
-            sock.sendto(packets[next_to_send], RECEIVER_ADDR)
-            next_to_send += 1
-
-        # Start the timer
-        if not send_timer.running():
-            # print('Starting timer')
-            send_timer.start()
-
-        # Wait until a timer goes off or we get an ACK
-        while send_timer.running() and not send_timer.timeout():
-            mutex.release()
-            # print('Sleeping')
-            time.sleep(SLEEP_INTERVAL)
-            mutex.acquire()
-
-        if send_timer.timeout():
-            # Looks like we timed out
-            # print('Timeout')
-            send_timer.stop()
-            next_to_send = base
-        else:
-            # print('Shifting window')
-            window_size = set_window_size(num_packets)
-
-        if end_conn_timer:
-            mutex.release()
-            raise Exception('WAITING TIME EXCEDED')
-    
-        mutex.release()
-
-    print('last pack sent')
-
-def countdown(t): 
-    global mutex
-    global send_timer
-    global end_conn_timer
-
-    while t > -1: 
-        mutex.acquire()
-        if not send_timer.running():
-            mutex.release()
-            return
-        mutex.release()
-        mins, secs = divmod(t, 60) 
-        timer = '{:02d}:{:02d}'.format(mins, secs) 
-        print(timer, end="\r") 
-        time.sleep(1) 
-        t -= 1
-    mutex.acquire()
-    send_timer.stop()
-    end_conn_timer = True
-    mutex.release()
-    raise Exception('WAITING TIME EXCEDED')
-
-
-def receive(sock):
-    pass
 
 def close(conn: Conn):
     conn.socket.close()
