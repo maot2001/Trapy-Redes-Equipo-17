@@ -22,58 +22,37 @@ class Conn:
 
     def __init__(self, sock=None):
         self.origin_address: tuple[str, int] = None
-        self.connected_address: list(tuple[str, int]) = []
 
+        """
+        Aqui van los datos de todas la conexiones q estan establecidas con el origin_address
+        
+        Se debe acceder a los datos de cada una por el indice asociado al connected_address, con este se puede saber los valores
+        de ack y seq, con nombre.connected_address.index(address) tienen ese indice, address deben recibirlo de data_conn luego
+        de separar la info del paquete recibido
+        
+        Para comprobar la existencia de address en connected_address pueden usar: if address in connected_address y asi evitar
+        errores de mensajes
+
+        No me queda claro que el proyecto necesite estas listas de conexiones, creo que las conexiones de un origen con varios
+        destinos podria representarse como varios conn, pero para el send y recv no se que les sera mas comodo
+
+        En accept hice un comentario sobre el tipado de self.ack y sel.seq
+        """
+        self.connected_address: list(tuple[str, int]) = []
         self.ack: list(bytes) = []
         self.seq: list(bytes) = []
         
         self.windows_length = 4
-        #self.buffer = ()
-
-        """self.time_init: float = None
-        self.time_stop: float = None  # TODO:Definir el tiempo de parada
-        self.time_mark: float = None
-        self.time_estimated: float = 1
-        self.time_desviation: float = 0
-        self.time_interval: float = 1"""
 
         if sock == None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
         self.socket = sock
 
-    """def start(self):
-        now = time.time()
-        self.time_mark = now
-        if self.time_init == self.time_stop:
-            self.time_init = now
-
-    def running(self):
-        return self.time_init != self.time_stop  # TODO: ????
-
-    def timeout(self):
-        if time.time() - self.time_init >= self.time_interval:
-            self.time_interval *= 3 / 2
-            self.time_init = self.time_stop
-            # Aumentar la ventana de tiempo
-            return True
-        return False
-
-    def waiter(self, time_wait):
-        return self.running() and time.time() - self.time_mark >= time_wait
-
-    def stop(self, retime = True):
-        if retime:
-            elapsed = time.time() - self.time_init
-            self.time_estimated *= 7 / 8
-            self.time_estimated += elapsed / 8
-
-            self.time_desviation *= 3 / 4
-            self.time_desviation += abs(elapsed - self.time_estimated) / 4
-
-            self.time_interval = self.time_estimated + 4 * self.time_desviation
-        self.time_init = self.time_stop"""
-
-    def refresh(self, index, new_ack, new_seq, data):
+    def refresh(self, index: int, new_ack: int, new_seq: int, data: int):
+        """
+        Este metodo les permite modificar los ack y seq pasando el tamaño del paquete recibido, ahora mismo todos los valores
+        son int, pero puede hacerse con bytes o con lo que sea, la idea no cambia
+        """
         self.seq[index] = new_ack.to_bytes(4,byteorder='big', signed=False)
         new_seq += data
         self.ack[index] = new_seq.to_bytes(4,byteorder='big', signed=False)

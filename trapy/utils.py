@@ -11,9 +11,6 @@ def parse_address(address):
 
     return host, int(port)
 
-#def get_bytes(protocol, init, end):
-#    return int.from_bytes(protocol[init : end], byteorder = 'big', signed = False)
-
 def hex(arr):
     count = 0
     for i in range(0, len(arr), 2):
@@ -52,11 +49,19 @@ def create_packet(conn : Conn, index, flags: Flags, data = b''):
     o_addr, o_port = conn.origin_address
     c_addr, c_port = conn.connected_address[index]
 
+    #Para la cabecera del ip, solo hacen falta los 2 ip correspondientes a origen y destino
     ip_header = build_iph(o_addr, c_addr)
 
     seq = conn.seq[index]
     ack = conn.ack[index]
     
+    """
+    Para la cabecera del tcp se necesita, los 2 puertos, el seq y ack del que va transmitir el paquete (a la conexion 
+    correspondiente), el tamaño de ventana (con eso se va a trabajar mas en el send y el recv), las flags activas en un
+    objeto de tipo Flags y los datos
+
+    Dentro de build_protocolh se calcula el checksum correspondiente
+    """
     protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, flags, data)
     
     return ip_header + protocol_header
@@ -73,17 +78,42 @@ def corrupt(protocol, data):
 
 def data_conn(packet: bytes):
 
+    """
+    Aqui el ip_header si empieza en el 20, cuando estuve haciendo print al paquete para revisarlo pude comprobarlo, no se que
+    son los 1ros 20 bytes pero no son el ip_header, en este orden esta correcto salvo que se quiera variar el tamaño de la 
+    cabecera del tcp_header, pero esa implementacion no es compleja, si da tiempo la hago al final xq implicaria pasar un dato
+    mas como parametro en todos lados que representa el tamaño de la cabecera (offset)
+    """
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
-#MVJC
+    #Aqui se verifica el checksum del paquete con respecto a sus datos
     #if corrupt(protocol , data):
     #    return None
     
+    #Se usa el ip_header para extraer el ip del que envia el paquete
     ip = '.'.join(map(str,ip_header[12:16]))
+
+    #Se usa el protocol para extraer el puerto del que envia el paquete
     port = int.from_bytes(protocol[:2],byteorder='big',signed=False)
+
+    #Se usa el byte de las flags para activarlas en un objeto Flags 
     flags = Flags(protocol[13])
 
     return ((ip, port), protocol, data, flags)
+
+
+
+
+
+
+
+"""
+De aqui para abajo no revise ni toque nada
+
+
+
+"""
+
 
 def make_frames(data:bytes,size:int)->list:
      return[data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]

@@ -2,6 +2,11 @@ from enum import Enum
 
 class Flags:
     def __init__(self, flag: bytes = 0):
+        """
+        Cuando se recibe un paquete se crea un objeto Flags pasandole como entrada el byte 13 de la cabecera del protocolo
+        (q es donde vienen las flags), en cualquier otro caso no le estoy pasando nada al constructor de Flags y se inicia
+        con todas en 0
+        """
         bits = self.obtener_bits(flag)
         self.CWR = bits[7]
         self.ECE = bits[6]
