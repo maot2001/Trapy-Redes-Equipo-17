@@ -1,7 +1,6 @@
 from conn import Conn
-import flags
+from flags import Flags
 AUX = (1 << 16) - 1
-
 
 def parse_address(address):
     host, port = address.split(':')
@@ -11,19 +10,14 @@ def parse_address(address):
 
     return host, int(port)
 
-
-def get_bytes(protocol, init, end):
-    return int.from_bytes(protocol[init : end], byteorder = 'big', signed = False)
-
+#def get_bytes(protocol, init, end):
+#    return int.from_bytes(protocol[init : end], byteorder = 'big', signed = False)
 
 def hex(arr):
     count = 0
     for i in range(0, len(arr), 2):
         count += int.from_bytes(arr[i : min(i + 2, len(arr))], byteorder = 'big', signed = False)
     return count & AUX
-
-
-
 
 def build_iph(origin_ip, connected_ip):
     ip_header = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
@@ -35,40 +29,33 @@ def build_iph(origin_ip, connected_ip):
     ip_header += bytes(connected_ip)  # Destination Address
     return ip_header
 
-
-def build_protocolh(o_port, c_port, seq, ack, windows_length, ACK = 0, SYN = 0, FIN = 0, data = b''):
-    tcp_header = o_port.to_bytes(2, byteorder = 'big', signed = False)  # Source Port
-    tcp_header += c_port.to_bytes(2, byteorder = 'big', signed = False)  # Destination Port
-    tcp_header += seq.to_bytes(4, byteorder = 'big', signed = False)  # Sequence Number
-    tcp_header += ack.to_bytes(4, byteorder = 'big', signed = False)  # Acknowledgement Number
-    tcp_header += ((ACK << 4) + (SYN << 1) + (FIN)).to_bytes(2, byteorder = 'big', signed = False)  # Flags
-    tcp_header += windows_length.to_bytes(2, byteorder = 'big', signed = False)  # Window Size
+def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags(), data = b''):
+    tcp_header = o_port.to_bytes(2,byteorder='big',signed=False)  # Source Port
+    tcp_header += c_port.to_bytes(2, byteorder='big',signed=False)  # Destination Port
+    tcp_header += seq.to_bytes(4,byteorder='big',signed=False)  # Sequence Number
+    tcp_header += ack.to_bytes(4,byteorder='big',signed=False)  # Acknowledgement Number
+    tcp_header += ((flags.CWR << 7) + (flags.ECE << 6) + (flags.URG << 5) + (flags.ACK << 4) + (flags.PSH << 3) + 
+                   (flags.RST << 2) + (flags.SYN << 1) + (flags.FIN)).to_bytes(2,byteorder='big',signed=False)  # Flags
+    tcp_header += windows_length.to_bytes(2,byteorder='big',signed=False)  # Window Size
     tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
 
-    checksum = hex(data) + hex(tcp_header)
+    """checksum = hex(data) + hex(tcp_header)
     checksum = AUX - (checksum & AUX)
     checksum = checksum.to_bytes(2, byteorder = 'big', signed = False)
 
-    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]
+    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]"""
     return tcp_header + data
 
-
-def create_packet(conn : Conn, seq = -1, ack = -1, ACK = 0, SYN = 0, FIN = 0, data = b''):
+def create_packet(conn : Conn, index, flags: Flags, data = b''):
     o_addr, o_port = conn.origin_address
-    c_addr, c_port = conn.connected_address
-
-    if c_addr == 'localhost':
-        c_addr, c_port = conn.socket.getsockname()
+    c_addr, c_port = conn.connected_address[index]
 
     ip_header = build_iph(o_addr, c_addr)
-    #TODO: Hay que hacer esto desde que se crea el objeto COnn
-   # if seq == -1: seq = conn.seq
-    if seq ==-1 : seq=1
-    if ack == -1: ack = conn.ack
+    seq = conn.seq[index]
+    ack = conn.ack[index]
     
-    protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, ACK, SYN, FIN, data)
+    protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, flags, data)
     return ip_header + protocol_header
-
 
 def corrupt(protocol, data):
     recv_checksum = int.from_bytes(protocol[16:18], byteorder = 'big', signed = False)
@@ -80,24 +67,18 @@ def corrupt(protocol, data):
     exp_checksum = AUX - (exp_checksum & AUX)
     return recv_checksum != exp_checksum
 
+def data_conn(packet: bytes):
 
-def data_conn(conn : Conn):
-    try:
-        packet, _ = conn.socket.recvfrom(1024)
-    except:
-        return None
-
-    ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
+    ip_header, protocol, data = packet[:20], packet[20:40], packet[40:]
 #MVJC
-    if corrupt(protocol , data):
-        return None
+    #if corrupt(protocol , data):
+    #    return None
     
     ip = '.'.join(map(str, ip_header[12:16]))
     port = int.from_bytes(protocol[:2], byteorder='big', signed=False)
+    flags = Flags(protocol[14])
 
-    return ((ip, port), protocol, data)
-
-
+    return ((ip, port), protocol, data, flags)
 
 def make_frames(data:bytes,size:int)->list:
      return[data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
@@ -146,8 +127,6 @@ def make_protocol_header(source_port, destination_port, seqnumber, acknumber, wi
         
         tcp_header = tcp_header[:16] + checksum + tcp_header[18:]
         return tcp_header + data
-
-
 
 #TODO:ADD From Marcos
 """

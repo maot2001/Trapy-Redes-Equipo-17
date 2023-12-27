@@ -1,56 +1,66 @@
 import logging
 import time
+import random
+import threading
 from utils import *
 from conn import *
-import flags
 logger = logging.getLogger(__name__)
-
-
 
 def listen(address: str):
     conn = Conn()
+
     conn.origin_address = parse_address(address)
     print(conn.origin_address)
-    conn.socket.bind(('127.0.0.1',8000))
-   
-    logger.info(f'socket binded to {address}')
 
-   # conn.socket.listen(10)
+    conn.socket.bind(conn.origin_address)
+    logger.info(f'socket binded to {address}')
 
     return conn
 
-
 def accept(conn: Conn):
-    conn.start()
+    #conn.start()
 
     while True:
         try:
-            address, protocol, _ = data_conn(conn)
+            packet, _ = conn.socket.recvfrom(1024)
+            print(f'server reading syn packet')
+            address, protocol, _, flags = data_conn(packet)
         except:
+            print(f'server non-reading syn packet')
             continue
 
-        if not protocol[14] == 1 or get_bytes(protocol, 8, 12) != 1:
+        if not flags.SYN:
+            continue
+        
+        if address in conn.connected_address:
+            logger.error(f'existing connection with {address}')
             continue
 
+        print(f'server syn received from {address}')
         logger.info(f'syn received')
-        conn.stop()
+        #conn.stop()
 
-        accept_conn = Conn()
+        conn.connected_address.append(address)
+        conn.ack.append(protocol[4:8] + 1)
+        tmp = random.randint(2, 1e10)
+        print(f'server seq: {tmp}')
+        conn.seq.append(tmp.to_bytes(4,byteorder='big',signed=False))
+        
+        flags = Flags()
+        flags.ACK = 1
+        flags.SYN = 1
 
-        accept_conn.origin_address = conn.origin_address
-        accept_conn.connected_address = address
+        index = conn.connected_address.index(address)
+        packet = create_packet(conn, index, flags)
 
-        accept_conn.ack = get_bytes(protocol, 4, 8) + 1
+        #conn.start()
 
-        packet = create_packet(accept_conn, ACK = 1, SYN = 1)
-
-        conn.start()
-
+        print(f'server syn-ack sending to {address}')
         logger.info(f'syn-ack sending')
-        accept_conn.socket.sendto(packet, accept_conn.connected_address)
+        conn.socket.sendto(packet, conn.connected_address[index])
 
         while True:
-            if not accept_conn.running() or accept_conn.timeout():
+            """if not accept_conn.running() or accept_conn.timeout():
                 logger.warning(f'syn-ack sending again')
                 accept_conn.socket.sendto(packet, accept_conn.connected_address)
                 accept_conn.origin_address = conn.origin_address
@@ -58,37 +68,50 @@ def accept(conn: Conn):
             if accept_conn.waiter(180):
                 accept_conn.stop()
                 logger.error(f'error sending')
-                raise ConnException()
+                raise ConnException()"""
 
             try:
-                address, protocol, _ = data_conn(accept_conn)
+                packet, _ = conn.socket.recvfrom(1024)
+                print(f'server reading ack packet')
+                address, protocol, _, flags = data_conn(packet)
             except:
+                print(f'server non-reading ack packet')
                 continue
 
-            if get_bytes(protocol, 4, 8) != accept_conn.ack or get_bytes(protocol, 8, 12) != accept_conn.seq + 1 or \
-            not protocol[17] == 1:
+            if protocol[4:8] != conn.ack[index] or protocol[8:12] != conn.seq[index] + 1 or not flags.ACK:
                 continue
 
+            print(f'server ack received')
             logger.info(f'ack received')
-            accept_conn.refresh(protocol)
-            accept_conn.stop()
-            return accept_conn
+            #conn.refresh(protocol)
+            #accept_conn.stop()
+            return conn
 
-
-def dial(address: str)->Conn:
+def dial(address: str) -> Conn:
+    address = parse_address(address)
     conn = Conn()
     conn.origin_address = conn.socket.getsockname()
-    conn.connected_address = parse_address(address)
-    conn.ack = 1
+    conn.connected_address.append(address)
 
-    packet = create_packet(conn, SYN = 1)
+    tmp = 0
+    conn.ack.append(tmp.to_bytes(4,byteorder='big',signed=False))
+    tmp = random.randint(2, 1e10)
+    print(f'client seq: {tmp}')
+    conn.seq.append(tmp.to_bytes(4,byteorder='big',signed=False))
 
-    conn.start()
+    flags = Flags()
+    flags.SYN = 1
+
+    index = conn.connected_address.index(address)
+    packet = create_packet(conn, index, flags)
+
+    #conn.start()
+    print(f'client syn sending')
     logger.info(f'syn sending')
-    conn.socket.sendto(packet, conn.connected_address)
+    conn.socket.sendto(packet, conn.connected_address[index])
 
     while True:
-        if not conn.running() or conn.timeout():
+        """if not conn.running() or conn.timeout():
             logger.warning(f'syn sending again')
             conn.socket.sendto(packet, conn.connected_address)
             conn.origin_address = conn.socket.getsockname()
@@ -97,28 +120,36 @@ def dial(address: str)->Conn:
         if conn.waiter(180):
             conn.stop()
             logger.error(f'error sending')
-            #TODO: Poner la exepcionraise ConnException()
+            #TODO: Poner la exepcionraise ConnException()"""
         
         try:
-            address, protocol, _ = data_conn(conn)
+            packet, _ = conn.socket.recvfrom(1024)
+            print(f'client reading syn-ack packet')
+            address, protocol, _, flags = data_conn(packet)
         except:
+            print(f'client non-reading syn-ack packet')
             continue
         
-        if protocol[17] == 1 and protocol[14] == 1 and get_bytes(protocol, 8, 12) == conn.seq + 1:
-            logger.info(f'syn-ack received')
-            conn.refresh(protocol)
-            conn.connected_address = address
-            conn.origin_address = conn.socket.getsockname()
+        if not flags.ACK or not flags.SYN or protocol[8:12] != conn.seq[index] + 1:
+            continue
 
-            logger.info(f'ack sending')
-            packet = create_packet(conn, ACK = 1)
-            conn.socket.sendto(packet, conn.connected_address)
-            break
-    conn.stop()
+        print(f'client syn-ack received')
+        logger.info(f'syn-ack received')
+        #conn.refresh(protocol)
+
+        conn.refresh(index, protocol[8:12], protocol[4:8], 1)
+        flags = Flags()
+        flags.ACK = 1
+        
+        print(f'client ack sending')
+        logger.info(f'ack sending')
+        packet = create_packet(conn, index, flags)
+        conn.socket.sendto(packet, conn.connected_address[index])
+        break
+    #conn.stop()
     return conn
 
-
-def send(conn: Conn, data: bytes) -> int:
+"""def send(conn: Conn, data: bytes) -> int:
     
     #Secuencia 
     sequence=conn.seq
@@ -194,8 +225,7 @@ def recv(conn: Conn, length: int) -> bytes:
         packet = create_packet(conn, ACK = 1, FIN = 1)
         end(conn, packet)
     
-    return buffer
-
+    return buffer"""
 
 def close(conn: Conn):
     conn.socket.close()
@@ -203,6 +233,14 @@ def close(conn: Conn):
     conn.socket = None
 
 
+addres = "127.0.0.1:8000"
+conn = listen(addres)
+server_thread = threading.Thread(target=accept, args=(conn,))
+server_thread.start()
+client_thread = threading.Thread(target=dial, args=(addres,))
+client_thread.start()
 
-
-dial("127.0.0.1:8000")
+time.sleep(30)
+print(conn.connected_address[0])
+print(conn.ack[0])
+print(conn.seq[0])

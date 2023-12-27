@@ -1,11 +1,23 @@
 from enum import Enum
 
 class Flags:
-    def __init__(self):
-        self.ACK = 0
-        self.SYN = 0
-        self.FIN = 0
-  
+    def __init__(self, flag: bytes = 0):
+        bits = self.obtener_bits(flag)
+        self.CWR = bits[7]
+        self.ECE = bits[6]
+        self.URG = bits[5]
+        self.ACK = bits[4]
+        self.PSH = bits[3]
+        self.RST = bits[2]
+        self.SYN = bits[1]
+        self.FIN = bits[0]
+    
+    def obtener_bits(byte):
+        bits = []
+        for i in range(8):
+            bit = (byte >> i) & 1
+            bits.append(bit)
+        return bits
     
 def make_connection(self):
     """
