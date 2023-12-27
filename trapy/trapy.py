@@ -4,6 +4,11 @@ import random
 import threading
 from utils import *
 from conn import *
+import threading
+import time
+import packet
+
+from timer import Timer
 logger = logging.getLogger(__name__)
 
 def listen(address: str):
@@ -149,83 +154,99 @@ def dial(address: str) -> Conn:
     #conn.stop()
     return conn
 
-"""def send(conn: Conn, data: bytes) -> int:
-    
-    #Secuencia 
-    sequence=conn.seq
-    ack=conn.ack
-    times = 0
-    #Tramas
-    frames= pieces = [data[i:min(len(data),i + 1024)]for i in range(0,len(data),1024)]
-    
-    current={sequence:0}
-    
-    for i in range(current[conn.sequence_number], min(current[conn.sequence_number] + conn.windows_size, len(pieces))):
-         current[seq_num] = i
-       # Crear el paquete
-         package = conn.package(seq_num=seq_num,ack_num=conn.ack+i-current[conn.sequence_number],data=pieces[i])
-          
-                   #Enviamos el paquete
-                   #TODO:Verificar si se envia a la direccion correcta osea es una tupla ('direcciopon',puerto:int)
-         conn.socket.sendto(package, (conn.destination_address,0))
-         seq_num +=len(pieces[i])
-         conn.timer.start()
-         current[seq_num] = min(current[conn.sequence_number]+conn.windows_size, len(pieces))
 
-def recv(conn: Conn, length: int) -> bytes:
-    buffer = b''
-    count = 0
+SLEEP_INTERVAL = 0.05
+TIMEOUT_INTERVAL = 0.5
 
-    conn.start()
+END_CONN_INTERVAL = 5
+end_conn_timer = False
 
-    while len(buffer) <length:
-        try:
-            _, protocol, data = data_conn(conn)
-        except:
-            if not conn.running() or conn.timeout():
-                count += 1
 
-                packet = create_packet(conn, ACK = 1)
-                conn.socket.sendto(packet, conn.connected_address)
+base = 0
+send_timer = Timer(TIMEOUT_INTERVAL)
+mutex = threading.Lock()
 
-            if conn.waiter(30):
-                conn.stop()
-                logger.error(f'error receiving')
-                raise ConnException()
-            continue
 
-        if get_bytes(protocol, 4, 8) != conn.ack or get_bytes(protocol, 8, 12) != conn.seq + 1:
-            continue
+def send(conn:Conn, data):
+    global mutex
+    global base
+    global send_timer
 
-        if protocol[13] == 1:
-            conn.stop()
-            conn.refresh(protocol)
-            
-            packet = create_packet(conn, ACK = 1, FIN = 1)
-            conn.time_mark = time.time()
-            conn.socket.sendto(packet, conn.connected_address)
-            
-            conn.stop()
-            return buffer
+    sock = conn.sock(conn)
+
+    RECEIVER_ADDR = (conn.dest_ip, conn.dest_port)
+
+    packets = create_packet(conn, data)
+    num_packets = len(packets)
+    window_size = set_window_size(num_packets)
+    next_to_send = 0
+    base = 0
+
+    threading.Thread(target=receive, args=(sock,)).start()
+    threading.Thread(target=countdown, args=(END_CONN_INTERVAL,)).start()
+
+    while base < num_packets:
+        
+        mutex.acquire()
+        while next_to_send < base + window_size:
+            unpacked = packet.my_unpack(packets[next_to_send])
+            sock.sendto(packets[next_to_send], RECEIVER_ADDR)
+            next_to_send += 1
+
+        # Start the timer
+        if not send_timer.running():
+            # print('Starting timer')
+            send_timer.start()
+
+        # Wait until a timer goes off or we get an ACK
+        while send_timer.running() and not send_timer.timeout():
+            mutex.release()
+            # print('Sleeping')
+            time.sleep(SLEEP_INTERVAL)
+            mutex.acquire()
+
+        if send_timer.timeout():
+            # Looks like we timed out
+            # print('Timeout')
+            send_timer.stop()
+            next_to_send = base
         else:
-            conn.time_mark = time.time()
-            conn.stop(count <= 2)
+            # print('Shifting window')
+            window_size = set_window_size(num_packets)
 
-            if len(buffer) + len(data) >= length:
-                data = data[:length - len(buffer)]
-
-            buffer += data
-            conn.seq = get_bytes(protocol, 8, 12)
-            conn.ack += len(data)
-            count = 0
+        if end_conn_timer:
+            mutex.release()
+            raise Exception('WAITING TIME EXCEDED')
     
-    conn.stop()
+        mutex.release()
 
-    if len(buffer) == length:
-        packet = create_packet(conn, ACK = 1, FIN = 1)
-        end(conn, packet)
-    
-    return buffer"""
+    print('last pack sent')
+
+def countdown(t): 
+    global mutex
+    global send_timer
+    global end_conn_timer
+
+    while t > -1: 
+        mutex.acquire()
+        if not send_timer.running():
+            mutex.release()
+            return
+        mutex.release()
+        mins, secs = divmod(t, 60) 
+        timer = '{:02d}:{:02d}'.format(mins, secs) 
+        print(timer, end="\r") 
+        time.sleep(1) 
+        t -= 1
+    mutex.acquire()
+    send_timer.stop()
+    end_conn_timer = True
+    mutex.release()
+    raise Exception('WAITING TIME EXCEDED')
+
+
+def receive(sock):
+    pass
 
 def close(conn: Conn):
     conn.socket.close()

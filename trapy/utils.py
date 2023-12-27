@@ -57,6 +57,8 @@ def create_packet(conn : Conn, index, flags: Flags, data = b''):
     protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, flags, data)
     return ip_header + protocol_header
 
+
+
 def corrupt(protocol, data):
     recv_checksum = int.from_bytes(protocol[16:18], byteorder = 'big', signed = False)
     
@@ -158,3 +160,4 @@ def end(conn : Conn, packet):
             conn.refresh(protocol)
             break
             """
+
