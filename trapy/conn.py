@@ -73,8 +73,6 @@ class Conn:
             self.time_interval = self.time_estimated + 4 * self.time_desviation
         self.time_init = self.time_stop"""
 
-    def sock(self):
-        return self.socket  
 
     def refresh(self, index, new_ack, new_seq, data):
         self.seq[index] = new_ack

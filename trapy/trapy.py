@@ -8,6 +8,7 @@ import threading
 import time
 from packet import *
 from timer import Timer
+from _send import send as sends
 logger = logging.getLogger(__name__)
 
 def listen(address: str):
@@ -153,7 +154,8 @@ def dial(address: str) -> Conn:
     #conn.stop()
     return conn
 
-
+def send(conn: Conn, data: bytes) -> int:
+    sends(conn, data)
 
 
 def close(conn: Conn):

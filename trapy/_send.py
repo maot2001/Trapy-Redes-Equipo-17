@@ -20,9 +20,9 @@ def send(conn:Conn, data):
     global base
     global send_timer
 
-    sock = conn.sock(conn)
+    sock = conn.socket
 
-    RECEIVER_ADDR = (conn.dest_ip, conn.dest_port)
+    RECEIVER_ADDR = (conn.connected_address[0], conn.connected_address[1] )
 
     packets = create_pack_list(conn, data)
     num_packets = len(packets)
