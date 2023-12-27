@@ -1,5 +1,5 @@
 import time
-from conn import Conn
+from conn import Conn, ConnException
 from flags import Flags
 AUX = (1 << 16) - 1
 
@@ -15,6 +15,9 @@ def hex(arr):
     count = 0
     for i in range(0, len(arr), 2):
         count += int.from_bytes(arr[i : min(i + 2, len(arr))], byteorder = 'big', signed = False)
+        if count > AUX: 
+            count &= AUX
+            count += 1
     return count & AUX
 
 def build_iph(origin_ip, connected_ip):
@@ -27,7 +30,7 @@ def build_iph(origin_ip, connected_ip):
     ip_header += bytes(connected_ip)  # Destination Address
     return ip_header
 
-def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags(), data = b''):
+def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags, data = b''):
     tcp_header = o_port.to_bytes(2,byteorder='big',signed=False)  # Source Port
     tcp_header += c_port.to_bytes(2,byteorder='big',signed=False)  # Destination Port
     tcp_header += seq  # Sequence Number
@@ -38,11 +41,11 @@ def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags(), da
     tcp_header += windows_length.to_bytes(2,byteorder='big',signed=False)  # Window Size
     tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
 
-    """checksum = hex(data) + hex(tcp_header)
+    checksum = hex(data) + hex(tcp_header)
     checksum = AUX - (checksum & AUX)
     checksum = checksum.to_bytes(2, byteorder = 'big', signed = False)
 
-    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]"""
+    tcp_header = tcp_header[:16] + checksum + tcp_header[18:]
     return tcp_header + data
 
 def create_packet(conn : Conn, index, flags: Flags, data = b''):
@@ -70,7 +73,7 @@ def corrupt(protocol, data):
     recv_checksum = int.from_bytes(protocol[16:18], byteorder = 'big', signed = False)
     
     protocol_aux = protocol[:16]
-    protocol += b'\x00\x00\x00\x00'
+    protocol_aux += b'\x00\x00\x00\x00'
     
     exp_checksum = hex(data) + hex(protocol_aux)
     exp_checksum = AUX - (exp_checksum & AUX)
@@ -87,8 +90,8 @@ def data_conn(packet: bytes):
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
     #Aqui se verifica el checksum del paquete con respecto a sus datos
-    #if corrupt(protocol , data):
-    #    return None
+    if corrupt(protocol , data):
+        raise ConnException
     
     #Se usa el ip_header para extraer el ip del que envia el paquete
     ip = '.'.join(map(str,ip_header[12:16]))
