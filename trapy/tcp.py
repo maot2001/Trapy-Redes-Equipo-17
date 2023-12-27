@@ -1,6 +1,6 @@
 from flags import Flags
 from converters_utils import bytes_to_int, int_to_bytes, calculate_checksum
-
+import socket
 
 class TCP_Header:
      
@@ -8,8 +8,8 @@ class TCP_Header:
                  port_source:bytes,
                  flags:Flags
                  ,destination_address=None,
-                 ack_number:bytes=None#32 bits
-                 ,seq_number:bytes=None, #32 bits
+                 ack_number:bytes=int_to_bytes(1,4)#32 bits
+                 ,seq_number:bytes=int_to_bytes(1,4), #32 bits
                  port_destination:bytes=None,
                  recv_window:bytes=None
          
@@ -30,16 +30,16 @@ class TCP_Header:
         
    
     
-    def __get_address_from_bytes_to_str(address:bytes) -> str:
-   
-        return ".".join(str(byte) for byte in address)    
+    def get_address_from_bytes_to_str(address:bytes) -> str:
+
+            return socket.inet_ntoa(address)
 
 
     def get_address_source_to_str(self):
-       return self.get_address_from_bytes_to_str(self.source_address)
+       return TCP_Header.get_address_from_bytes_to_str(self.source_address)
       
     def get_address_destination_to_str(self):
-       return self.get_address_from_bytes_to_str(self.destination_address)  
+       return TCP_Header.get_address_from_bytes_to_str(self.destination_address)  
     
     def get_property_from_bytes_to_int(data:bytes):
              

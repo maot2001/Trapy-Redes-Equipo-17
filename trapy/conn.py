@@ -5,7 +5,8 @@ from utils import get_bytes, make_ip_header,make_protocol_header,unpack
 from flags import Flags
 from tcp import TCP_Header
 from collections import deque
-
+from testing_utils import get_testing_package_path
+from converters_utils import parse_address,bytes_to_int
 
 # Configura el logger para que registre los mensajes en un archivo
 logging.basicConfig(filename='app.log', level=logging.INFO)
@@ -44,7 +45,7 @@ class Conn:
             self.windows_length = 4
 
             self.time_init: float = None
-            self.time_out: float = None  # TODO:Definir el tiempo de parada
+            self.time_out: float = 3000  # TODO:Definir el tiempo de parada
             self.time_mark: float = None
             self.time_estimated: float = 1
             self.time_desviation: float = 0
@@ -114,39 +115,19 @@ class Conn:
         return ip_header + protocol_header
 
    
-    """
-    def data_conn(self):
-        try:
-            #Se recibe un paquete de 1024 bytes
-            packet, _ = self.socket.recvfrom(1024)
-        except:
-            logging.info('Error al recibir el paquete')
-            return None
 
-        #TODO:Revisar el checkSum
-        
-        ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
-        if corrupt(protocol , data):
-            return None
-        
-        #ip = '.'.join(map(str, ip_header[12:16]))
-        ip_source=get_address_from_bytes(ip_header[12:16])
-        ip_dest=get_address_from_bytes(ip_header[16:20])
-        
-        port = int.from_bytes(protocol[:2], byteorder='big', signed=False)
-
-        return ((ip_source, port), protocol, data)
-        
-   """
     def copy_my_TCP_Head(self)->TCP_Header:
            
         t=self.tcp_header
         return TCP_Header(source_address=t.source_address,
-                          connect_address=t.destination_address,
+                          destination_address=t.destination_address,
                           port_destination=t.port_destination,
                           port_source=t.port_source,
                             seq_number=t.seq_number,
                             ack_number=t.ack_number,
+                            flags=t.flags,
+                            recv_window=t.recv_window
+                            
                                                      )
     
     
@@ -185,7 +166,18 @@ class Conn:
           #Si no llevo un paso implica que no se ha establecido la conexion correctamente
         while self.recive_conn(1)!=1:
              logging.info("Error while recieving SYN segment, retrying")
+      
+      
+       #DEBUG: revisar que este correcto el listen
          
+        str_addr=self.tcp_header.get_address_source_to_str()
+        print(str_addr)
+        str_dest_addr=self.tcp_header.get_address_destination_to_str()
+        print(str_dest_addr)
+        int_port_source=TCP_Header.get_property_from_bytes_to_int(self.tcp_header.port_source)
+        print(int_port_source)
+        #int_port_destino=TCP_Header.get_property_from_bytes_to_int(self.tcp_header.port_destination)
+        #print(int_port_destino) 
         conn=Conn(tcp_header= self.copy_my_TCP_Head(),is_server=True)
         
         #Revisar el primer lugar donde este vacio y guardarlo ahi
@@ -226,12 +218,48 @@ class Conn:
         return conn
          
         
+    
+    
+    
+    def connect(self,address:bytes,port:bytes):
+        self.is_server = False
+        self.dest_hostport = parse_address(address)
+        total_timeouts = 1
+        local_timeout = time.time() + 15 + self.timeout
+        while time.time() < local_timeout:
+            self.send_connect(1)
+            self.socket.settimeout(self.timeout)
+            try:
+                self.secnum += 1
+                if self.recv_connect(2) == 2:
+                    break
+                self.secnum -= 1
+                info("Error while recieving SYNACK segment, retrying")
+            except socket.timeout:
+                self.secnum -= 1
+                total_timeouts *= 2 if total_timeouts < 32 else 1 
+                self.timeout*=2
+                info("Timeout ocurred while waiting for ACK segment, retrying.")
+        else:
+            self.socket.settimeout(None)
+            return 0
+        for _ in range(total_timeouts):
+            self.send_connect(3)
+        self.secnum += 1
+
+        info("Three-Way Handshake completed, hopefully.")
+        self.socket.settimeout(None)
+        return 1
+    
+    
+    
+    
     def check_step(self,dest_ip:bytes,dest_port:bytes,step:int):
            source_host=self.tcp_header.get_address_source_to_str()
            
            source_port=TCP_Header.get_property_from_bytes_to_int(self.tcp_header.port_source)
            
-           if TCP_Header.__get_address_from_bytes_to_str(dest_ip) != source_host:
+           if TCP_Header.get_address_from_bytes_to_str(dest_ip) != source_host:
                
             if (not self.is_server) and step == 2 and (source_host==""and source_port==0):
                 
@@ -246,9 +274,11 @@ class Conn:
     def recive_conn(self,step_number:int)->int:
        try:
             #Se recibe un paquete de 1024 bytes
-            packet, _ = self.socket.recvfrom(1024)
+            #TODO:Quitar depsues de debuggear packet, _ = self.socket.recvfrom(1024)
+            packet= get_testing_package_path()
        except:
             logging.exception('Error al recibir el paquete')
+            
             return 0
 
        
@@ -301,6 +331,18 @@ class Conn:
             return step_number
        return 0
    
-    class ConnException(Exception):
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+class ConnException(Exception):
         pass
     # TODO: Implementar excepciones

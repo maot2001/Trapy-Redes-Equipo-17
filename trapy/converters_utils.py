@@ -1,4 +1,4 @@
-
+import socket
 
 
 def parse_address(address):
@@ -10,8 +10,8 @@ def parse_address(address):
     return host, int(port)
 
 
-def str_to_bytes(value:str)->bytes:
-   return value.encode('utf-8')
+def address_to_bytes(ip_str:str)->bytes:
+   return socket.inet_aton(ip_str)
 
 
 def bytes_to_int(b:bytes):

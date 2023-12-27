@@ -14,8 +14,7 @@ class Conn:
         self.socket = sock
 
 
-class ConnException(Exception):
-    pass
+
 
 
 def listen(address):
@@ -59,3 +58,7 @@ def recv(conn: Conn, length):
 def close(conn: Conn):
     conn.socket.close()
     conn.socket = None
+
+
+class ConnException(Exception):
+    pass

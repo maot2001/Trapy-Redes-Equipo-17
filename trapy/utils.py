@@ -1,6 +1,7 @@
 import logging
 
 from converters_utils import  calculate_checksum
+from tcp import Get_TCP_Header_From_IP_TCP_Headers
 
 AUX = (1 << 16) - 1
 
@@ -163,7 +164,8 @@ def unpack(packet:bytes):
         return None
     
     ip_header, tcp_header, data = packet[0:20], packet[20:40], packet[40:]
-    
+    #TODO:Quitar despues de debugguear
+    """
     # Chequear el checksum del IP
     if(not verify_ip_checksum(ip_header)):
         logging.error(f"Checksum inválido del IP")
@@ -173,7 +175,7 @@ def unpack(packet:bytes):
     if(not verify_tcp_checksum(tcp_header)):
         logging.error(f"Checksum inválido del TCP")
         return None
-    
+    """
     tcp_header_Wrapped= Get_TCP_Header_From_IP_TCP_Headers(ip_header=ip_header, tcp_header=tcp_header)
     
     return  tcp_header_Wrapped, data

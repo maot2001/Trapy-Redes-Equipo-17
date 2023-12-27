@@ -1,4 +1,4 @@
-from converters_utils import parse_address, str_to_bytes
+from converters_utils import parse_address, address_to_bytes
 from utils import *
 from conn import *
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def listen(address: str,max_conn:int=10)->Conn:
     
     addr,port=parse_address(address)
-    addr_b=str_to_bytes(addr)
+    addr_b=address_to_bytes(addr)
     port_b=int_to_bytes(port,2)
     
     tcp_header=TCP_Header(source_address=addr_b,port_source=port_b,flags=Flags())
