@@ -12,7 +12,7 @@ class Flags:
         self.SYN = bits[1]
         self.FIN = bits[0]
     
-    def obtener_bits(byte):
+    def obtener_bits(self, byte):
         bits = []
         for i in range(8):
             bit = (byte >> i) & 1

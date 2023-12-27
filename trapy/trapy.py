@@ -4,8 +4,6 @@ import random
 import threading
 from utils import *
 from conn import *
-import threading
-import time
 from packet import *
 from timer import Timer
 from _send import send as sends
@@ -15,7 +13,6 @@ def listen(address: str):
     conn = Conn()
 
     conn.origin_address = parse_address(address)
-    print(conn.origin_address)
 
     conn.socket.bind(conn.origin_address)
     logger.info(f'socket binded to {address}')
@@ -28,27 +25,26 @@ def accept(conn: Conn):
     while True:
         try:
             packet, _ = conn.socket.recvfrom(1024)
-            print(f'server reading syn packet')
             address, protocol, _, flags = data_conn(packet)
         except:
-            print(f'server non-reading syn packet')
             continue
 
-        if not flags.SYN:
+        if flags.SYN == 0:
             continue
         
         if address in conn.connected_address:
             logger.error(f'existing connection with {address}')
             continue
 
-        print(f'server syn received from {address}')
-        logger.info(f'syn received')
+        logger.info(f'syn received from {address}')
         #conn.stop()
 
         conn.connected_address.append(address)
-        conn.ack.append(protocol[4:8] + 1)
-        tmp = random.randint(2, 1e10)
-        print(f'server seq: {tmp}')
+        seq = int.from_bytes(protocol[4:8], byteorder='big', signed=False)
+        seq += 1
+        conn.ack.append(seq.to_bytes(4,byteorder='big', signed=False))
+
+        tmp = random.randint(2, 1e6)
         conn.seq.append(tmp.to_bytes(4,byteorder='big',signed=False))
         
         flags = Flags()
@@ -60,7 +56,6 @@ def accept(conn: Conn):
 
         #conn.start()
 
-        print(f'server syn-ack sending to {address}')
         logger.info(f'syn-ack sending')
         conn.socket.sendto(packet, conn.connected_address[index])
 
@@ -77,31 +72,31 @@ def accept(conn: Conn):
 
             try:
                 packet, _ = conn.socket.recvfrom(1024)
-                print(f'server reading ack packet')
                 address, protocol, _, flags = data_conn(packet)
             except:
-                print(f'server non-reading ack packet')
                 continue
 
-            if protocol[4:8] != conn.ack[index] or protocol[8:12] != conn.seq[index] + 1 or not flags.ACK:
+            ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
+            ack += 1
+            if protocol[4:8] != conn.ack[index] or protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False) or flags.ACK == 0:
                 continue
 
-            print(f'server ack received')
             logger.info(f'ack received')
-            #conn.refresh(protocol)
+            conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
             #accept_conn.stop()
             return conn
 
-def dial(address: str) -> Conn:
+def dial(address: str, clients) -> Conn:
     address = parse_address(address)
+    #address_2 = parse_address("127.68.0.11:5010")
     conn = Conn()
+    conn.socket.bind(('0.0.0.0', 0)) 
     conn.origin_address = conn.socket.getsockname()
+
     conn.connected_address.append(address)
 
-    tmp = 0
-    conn.ack.append(tmp.to_bytes(4,byteorder='big',signed=False))
-    tmp = random.randint(2, 1e10)
-    print(f'client seq: {tmp}')
+    conn.ack.append(int(0).to_bytes(4,byteorder='big',signed=False))
+    tmp = random.randint(2, 1e6)
     conn.seq.append(tmp.to_bytes(4,byteorder='big',signed=False))
 
     flags = Flags()
@@ -111,7 +106,6 @@ def dial(address: str) -> Conn:
     packet = create_packet(conn, index, flags)
 
     #conn.start()
-    print(f'client syn sending')
     logger.info(f'syn sending')
     conn.socket.sendto(packet, conn.connected_address[index])
 
@@ -129,30 +123,28 @@ def dial(address: str) -> Conn:
         
         try:
             packet, _ = conn.socket.recvfrom(1024)
-            print(f'client reading syn-ack packet')
             address, protocol, _, flags = data_conn(packet)
         except:
-            print(f'client non-reading syn-ack packet')
             continue
         
-        if not flags.ACK or not flags.SYN or protocol[8:12] != conn.seq[index] + 1:
+        ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
+        ack += 1
+        if flags.ACK == 0 or flags.SYN == 0 or protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False):
             continue
 
-        print(f'client syn-ack received')
         logger.info(f'syn-ack received')
-        #conn.refresh(protocol)
+        conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 1)
 
-        conn.refresh(index, protocol[8:12], protocol[4:8], 1)
         flags = Flags()
         flags.ACK = 1
         
-        print(f'client ack sending')
-        logger.info(f'ack sending')
         packet = create_packet(conn, index, flags)
+        
+        logger.info(f'ack sending')
         conn.socket.sendto(packet, conn.connected_address[index])
         break
     #conn.stop()
-    return conn
+    clients.append(conn)
 
 def send(conn: Conn, data: bytes) -> int:
     sends(conn, data)
@@ -164,14 +156,21 @@ def close(conn: Conn):
     conn.socket = None
 
 
-addres = "127.0.0.1:8000"
+addres = "127.68.0.10:5000"
 conn = listen(addres)
 server_thread = threading.Thread(target=accept, args=(conn,))
 server_thread.start()
-client_thread = threading.Thread(target=dial, args=(addres,))
+clients = []
+client_thread = threading.Thread(target=dial, args=(addres, clients))
 client_thread.start()
 
-time.sleep(30)
+server_thread.join()
+client_thread.join()
+
 print(conn.connected_address[0])
-print(conn.ack[0])
-print(conn.seq[0])
+print(int.from_bytes(conn.ack[0], byteorder='big', signed=False))
+print(int.from_bytes(conn.seq[0], byteorder='big', signed=False))
+
+print(clients[0].connected_address[0])
+print(int.from_bytes(clients[0].ack[0], byteorder='big', signed=False))
+print(int.from_bytes(clients[0].seq[0], byteorder='big', signed=False))

@@ -1,3 +1,4 @@
+import time
 from conn import Conn
 from flags import Flags
 AUX = (1 << 16) - 1
@@ -31,11 +32,12 @@ def build_iph(origin_ip, connected_ip):
 
 def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags(), data = b''):
     tcp_header = o_port.to_bytes(2,byteorder='big',signed=False)  # Source Port
-    tcp_header += c_port.to_bytes(2, byteorder='big',signed=False)  # Destination Port
-    tcp_header += seq.to_bytes(4,byteorder='big',signed=False)  # Sequence Number
-    tcp_header += ack.to_bytes(4,byteorder='big',signed=False)  # Acknowledgement Number
+    tcp_header += c_port.to_bytes(2,byteorder='big',signed=False)  # Destination Port
+    tcp_header += seq  # Sequence Number
+    tcp_header += ack  # Acknowledgement Number
+    tcp_header += int(80).to_bytes(1,byteorder='big',signed=False)
     tcp_header += ((flags.CWR << 7) + (flags.ECE << 6) + (flags.URG << 5) + (flags.ACK << 4) + (flags.PSH << 3) + 
-                   (flags.RST << 2) + (flags.SYN << 1) + (flags.FIN)).to_bytes(2,byteorder='big',signed=False)  # Flags
+                   (flags.RST << 2) + (flags.SYN << 1) + (flags.FIN)).to_bytes(1,byteorder='big',signed=False)  # Flags
     tcp_header += windows_length.to_bytes(2,byteorder='big',signed=False)  # Window Size
     tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
 
@@ -51,13 +53,13 @@ def create_packet(conn : Conn, index, flags: Flags, data = b''):
     c_addr, c_port = conn.connected_address[index]
 
     ip_header = build_iph(o_addr, c_addr)
+
     seq = conn.seq[index]
     ack = conn.ack[index]
     
     protocol_header = build_protocolh(o_port, c_port, seq, ack, conn.windows_length, flags, data)
+    
     return ip_header + protocol_header
-
-
 
 def corrupt(protocol, data):
     recv_checksum = int.from_bytes(protocol[16:18], byteorder = 'big', signed = False)
@@ -71,14 +73,15 @@ def corrupt(protocol, data):
 
 def data_conn(packet: bytes):
 
-    ip_header, protocol, data = packet[:20], packet[20:40], packet[40:]
+    ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
+
 #MVJC
     #if corrupt(protocol , data):
     #    return None
     
-    ip = '.'.join(map(str, ip_header[12:16]))
-    port = int.from_bytes(protocol[:2], byteorder='big', signed=False)
-    flags = Flags(protocol[14])
+    ip = '.'.join(map(str,ip_header[12:16]))
+    port = int.from_bytes(protocol[:2],byteorder='big',signed=False)
+    flags = Flags(protocol[13])
 
     return ((ip, port), protocol, data, flags)
 
@@ -160,5 +163,3 @@ def end(conn : Conn, packet):
             conn.refresh(protocol)
             break
             """
-
-
