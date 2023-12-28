@@ -1,6 +1,5 @@
 import time
 
-
 class Timer(object):
     TIMER_STOP = -1
 
@@ -18,7 +17,7 @@ class Timer(object):
         if self._start_time != self.TIMER_STOP:
             self._start_time = self.TIMER_STOP
 
-    # Determines whether the timer is running
+    # Determines whether the timer is runnning
     def running(self):
         return self._start_time != self.TIMER_STOP
 
@@ -28,7 +27,4 @@ class Timer(object):
             return False
         else:
             return time.time() - self._start_time >= self._duration
-
-    # Current time since timer started in seconds
-    def time(self):
-        return time.time() - self._start_time
+    

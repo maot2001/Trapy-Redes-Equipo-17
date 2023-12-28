@@ -181,121 +181,15 @@ def dial(address: str, clients) -> Conn:
     #esto es para sacar la conexion del cliente del hilo
 
 def send(conn: Conn, data: bytes) -> int:
-    if conn.is_close:
-        return 0
-    data_send = 0
-    sender_timer = Timer(conn.duration)
-    sender_timer.start()
-    packets_data = divide_data(data, conn.max_data_packet)
-    conn.send_base = 0
+    sends(conn, data)
 
-    timers = [Timer(1) for _ in range(len(packets_data))]
-    is_packet_send = [False for i in range(len(packets_data))]
-
-    print(f"LEN DATA: {len(packets_data)}")
-    windows_recv_packets = 0
-    window_timeout = False
-    while conn.send_base < len(packets_data) and not sender_timer.timeout():
-        window = range(conn.send_base, min(conn.send_base + conn.N, len(packets_data)))
-
-        logger.info(f"WINDOW SIZE: {conn.N}")
-        print(f"WINDOW SIZE : {conn.N}")
-
-        for i, packet_index in enumerate(window):
-            if not is_packet_send[packet_index] or timers[packet_index].timeout():
-                flags = 0
-                if packet_index == len(packets_data) - 1:
-                    flags = LAST_FLAG
-                p = Packet(src_port=conn.get_port(),
-                           dest_port=conn.get_dest_address()[1],
-                           seq_number=(conn.send_base_sequence_number + i) & 0xffffffff,
-                           data_len=len(packets_data[packet_index]),
-                           data=packets_data[packet_index],
-                           flags=flags)
-                is_packet_send[packet_index] = True
-                print(f'SeqNum send:{p.seq_number}')
-                logger.info(f'SeqNum send:{p.seq_number}')
-                conn.send(p.build())
-
-                if timers[packet_index].timeout():
-                    window_timeout = True
-
-                timers[packet_index] = Timer(0.5)
-                timers[packet_index].start()
-
-        recv_packet, _ = conn.recv()
-
-from recive_utils import join_byte_arrays
-def recv(conn: Conn, length: int) -> bytes:
-    
-    
-    
-    mss:int=1024
-    
-    
-    
-    #TODO: Añadir que el tamaño de ventana tiene que ser <= length restante    
-    #TODO:Añadir en caso que el window lengh es > length hay que corregirlo
- 
-    buffer:list=[]
-    buffer_length:int=0
-    
-    while True:
-       # packet=b'E\x00\x00<E\xb2@\x00@\x06\xf7\x06\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x00(\x00\x01\x00\x00@\x06|\xcc\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00m\xc9\x00\x00'
-       #
-       # packet=b'E\x00\x00FZ\xa6@\x00@\x06\xe2\x08\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x002\x00\x01\x00\x00@\x06|\xc2\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00]\x9b\x00\x00holamuindo'
-        packet, _ = conn.socket.recvfrom(mss)
-        print("jn")
-        address, protocol, data, flags = data_conn(packet)
-        """
-        try:
-            packet, _ = conn.socket.recvfrom(mss)
-            address, protocol, data, flags = data_conn(packet)
-           
-        except:
-            continue
-        """
-        #Si es acuse de recibo continuar
-        """
-        Momentáneamente si el ACK=1 => que es un mensaje de confirmación de algún tipo
-        """
-        print("hola")
-        if(flags.ACK):
-            continue
-        print(len(data))
-        new_date_l=len(data)
-        
-        
-        if(buffer_length+new_date_l>length):
-           return join_byte_arrays(buffer) 
-        
-        buffer.append(data)
-        buffer_length+=new_date_l
-        
-        if(buffer_length+new_date_l==length):
-            return join_byte_arrays(buffer) 
-            
-        if flags.ACK == 0:
-            continue
-
-        index = conn.connected_address.index(address)
-        ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
-        ack += 1
-        if protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False):
-            continue
-
-        logger.info(f'ack received')
-        conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
-
-        return join_byte_arrays(buffer)
-    
 
 def close(conn: Conn):
     conn.socket.close()
     logger.info(f'close connection')
     conn.socket = None
 
-"""
+
 addres = "127.68.0.10:5000"
 conn = listen(addres)
 server_thread = threading.Thread(target=accept, args=(conn,))
@@ -304,8 +198,8 @@ clients = []
 client_thread = threading.Thread(target=dial, args=(addres, clients))
 client_thread.start()
 
-#server_thread.join()
-#client_thread.join()
+server_thread.join()
+client_thread.join()
 
 print(conn.connected_address[0])
 print(int.from_bytes(conn.ack[0], byteorder='big', signed=False))
@@ -314,4 +208,3 @@ print(int.from_bytes(conn.seq[0], byteorder='big', signed=False))
 print(clients[0].connected_address[0])
 print(int.from_bytes(clients[0].ack[0], byteorder='big', signed=False))
 print(int.from_bytes(clients[0].seq[0], byteorder='big', signed=False))
-"""

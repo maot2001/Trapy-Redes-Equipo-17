@@ -6,8 +6,5 @@ venv/
 *.egg-info/
 dist/
 build/
-pepe.py
-tesss.py
-testt.py
-/test
+
 tests/data/

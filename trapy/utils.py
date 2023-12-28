@@ -1,10 +1,6 @@
 import time
 from conn import Conn, ConnException
 from flags import Flags
-import os
-import random
-from typing import List
-
 AUX = (1 << 16) - 1
 
 def parse_address(address):
@@ -87,7 +83,6 @@ def corrupt(protocol, data):
         exp_checksum &= AUX
         exp_checksum += 1
     exp_checksum = AUX - (exp_checksum & AUX)
-    assert recv_checksum != exp_checksum,f"Paquete corrompido {recv_checksum} {exp_checksum}"
     return recv_checksum != exp_checksum
 
 def data_conn(packet: bytes):
@@ -97,24 +92,10 @@ def data_conn(packet: bytes):
     son los 1ros 20 bytes pero no son el ip_header, en este orden esta correcto salvo que se quiera variar el tamaño de la 
     cabecera del tcp_header, pero esa implementacion no es compleja, si da tiempo la hago al final xq implicaria pasar un dato
     mas como parametro en todos lados que representa el tamaño de la cabecera (offset)
-    
-    Args:
-        packet (bytes): El paquete de datos de red a procesar.
-        
-    Returns:
-        tuple: Una tupla que contiene la siguiente información:
-            - Una tupla con la dirección IP y el puerto del remitente del paquete.
-            - El encabezado del protocolo.
-            - Los datos del paquete.
-            - Las banderas activadas en el byte de las flags del protocolo.
-            
-    Raises:
-        ConnException: Si el paquete está corrupto.
     """
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
     #Aqui se verifica el checksum del paquete con respecto a sus datos
-    assert not corrupt(protocol , data),"Paquete corrompido"
     if corrupt(protocol , data):
         raise ConnException
     
@@ -221,60 +202,3 @@ def end(conn : Conn, packet):
             conn.refresh(protocol)
             break
             """
-
-
-
-
-
-SYN = 0
-FIN = 1
-LAST = 2
-
-SYN_FLAG = 0b00000001
-FIN_FLAG = 0b00000010
-LAST_FLAG = 0b00000100
-
-def get_free_port(path):
-    if os.path.exists(path):
-        file = open('ports.trapy', 'r')
-        lines = file.readlines()
-        free_ports = [i for i in range(1, 65536)]
-        used_ports = list(map(int, lines[0].split()))
-        for port in used_ports:
-            free_ports.remove(port)
-
-        index = random.randint(0, len(free_ports))
-        file.close()
-        return free_ports[index]
-
-    return random.randint(1, 65536)
-
-def divide_data(data: bytes, length: int) -> List[bytes]:
-    divided_data = []
-    base = 0
-    while base < len(data):
-        upper = min(base + length, len(data))
-        if base == upper:
-            divided_data.append(int.to_bytes(data[base], length=1, byteorder='big'))
-        else:
-            divided_data.append(data[base:upper])
-        base += length
-
-    return divided_data
-
-def corrupted(data: bytes):
-    return checksum(data) != 0xffff
-
-def bit32_sum(a, b):
-    return (a + b) & 0xffffffff
-
-
-def index_bit(n, i):
-    return n >> i & 0b1
-
-def checksum(packet: bytes) -> int:
-    bit_sum = 0
-    for i in range(0, len(packet), 2):
-        bit_sum += int.from_bytes(packet[i:i + 2], byteorder='big')
-        bit_sum = (bit_sum >> 16) + (bit_sum & 0xffff)
-    return bit_sum

@@ -22,11 +22,13 @@ def listen(address):
     conn = Conn()
 
     host, port = parse_address(address)
-
-    logger.info(f'socket binded to {address}')
+    
     conn.socket.bind((host, port))
+    
+    logger.info(f'socket binded to {address}')
+    
     conn.socket.listen(1)
-
+    
     return conn
 
 
@@ -40,7 +42,7 @@ def dial(address):
     conn = Conn()
 
     host, port = parse_address(address)
-    # raise Exception(f"eovnrvirv {port} {host}")
+
     conn.socket.connect((host, port))
 
     return conn
