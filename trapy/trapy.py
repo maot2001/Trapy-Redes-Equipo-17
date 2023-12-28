@@ -188,11 +188,13 @@ def send(conn: Conn, data: bytes) -> int:
     mms:int=1024
     windows_length=conn.windows_length
     buffer=bytes_buffer(data)
-    for i in range(len(conn.connected_address)):
-        flags=Flags()
-        packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
-        conn.socket.sendto(packet,conn.connected_address[i])
-        
+    #Mientras que haya que enviar
+    while len(buffer)>0:
+        for i in range(len(conn.connected_address)):
+            flags=Flags()
+            packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
+            conn.socket.sendto(packet,conn.connected_address[i])
+            
         
     
 
@@ -205,16 +207,15 @@ def recv(conn: Conn, length: int) -> bytes:
     
     
     
-    mss:int=1024
-
+    mss:int=1024    
     #TODO: Añadir que el tamaño de ventana tiene que ser <= length restante    
     #TODO:Añadir en caso que el window lengh es > length hay que corregirlo
- 
+
     buffer:list=[]
     buffer_length:int=0
-    
+    i=0
     while True:
-       
+        i+=1
         packet, _ = conn.socket.recvfrom(mss)
         address, protocol, data, flags = data_conn(packet)
         #Si es acuse de recibo continuar
@@ -251,8 +252,9 @@ def recv(conn: Conn, length: int) -> bytes:
         #Responderle por el ACK
         ack_packet_response(conn,index,tcp_header,new_date_l)
         
-
-        return join_byte_arrays(buffer)
+        print(buffer,'testing')
+        if(i==3):
+            return join_byte_arrays(buffer)
 
 
 def close(conn: Conn):

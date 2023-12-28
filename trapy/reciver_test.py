@@ -10,16 +10,14 @@ import threading
 
 flags=Flags()
 flags.SYN=0
-data=b'hola'
+data=b'holo mundo'
 addr="127.68.0.10:5000"
 
 def send_Test_pack(addr:str,flags:Flags,data:bytes=b''):
     print('Comienza a ejecuatrse el dial en:',addr)
     conn=dial(addr)
     print('Dial ejecuatado en:',conn.origin_address)
-    packet=create_packet(conn,0,flags,data)
-
-    conn.socket.sendto(packet, conn.connected_address[0])
+    send(conn,data)
     print('Paquete enviado')
     
     
@@ -31,7 +29,7 @@ def recv_Test_pack(addr:str):
 
     print("server accepted connection")
     print("Listo para recibir")
-    recv(conn, 1024)
+    print(f' Valor del recv : {recv(conn, 1024)}')
     print('Terminado el Recive')
 
 # Crear un bucle de eventos

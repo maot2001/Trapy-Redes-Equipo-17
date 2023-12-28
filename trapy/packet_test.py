@@ -19,6 +19,6 @@ def recv_Test_pack(addr:str):
 
 flags=Flags()
 flags.SYN=1
-data=b'hola'
+data=b'hola mundo'
 addr="127.68.0.10:5000"
 recv_Test_pack(addr)
