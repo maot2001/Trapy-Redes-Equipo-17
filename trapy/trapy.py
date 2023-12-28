@@ -251,7 +251,7 @@ def send(conn: Conn, data: bytes) -> int:
                     
                     ack=convert_bytes_to_int(conn.ack[i])
                     #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
-                    #print('rec_ack',rec_ack,'seq',seq+4)
+                    print('rec_ack',rec_ack,'seq',seq+4)
                     #print('rec_seq',convert_bytes_to_int(tcp_header.seq_num),'ack',convert_bytes_to_int(tcp_header.ack_num))
                     assert  rec_ack ==ack+4,f"No es el ack esperado, esperado:{ack}, recibido {rec_ack}"
                     assert flags.ACK ,f'el flag debe ACK no esta 1'
