@@ -47,7 +47,7 @@ packet=create_packet(o_addr=o_addr,
 # Crear un socket
 print(5)
 s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-s.sendto(packet, ("127.0.0.2", 8000))
+s.sendto(packet, ("127.0.0.1", 8000))
 
 conn=listen("127.0.0.1:50")
 accept(conn)
