@@ -42,6 +42,9 @@ def build_protocolh(o_port, c_port, seq, ack, windows_length, flags: Flags, data
     tcp_header += b'\x00\x00\x00\x00'  # Checksum | Urgent Pointer
 
     checksum = hex(data) + hex(tcp_header)
+    if checksum > AUX: 
+        checksum &= AUX
+        checksum += 1
     checksum = AUX - (checksum & AUX)
     checksum = checksum.to_bytes(2, byteorder = 'big', signed = False)
 
@@ -76,6 +79,9 @@ def corrupt(protocol, data):
     protocol_aux += b'\x00\x00\x00\x00'
     
     exp_checksum = hex(data) + hex(protocol_aux)
+    if exp_checksum > AUX: 
+        exp_checksum &= AUX
+        exp_checksum += 1
     exp_checksum = AUX - (exp_checksum & AUX)
     return recv_checksum != exp_checksum
 
