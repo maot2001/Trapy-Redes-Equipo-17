@@ -188,63 +188,74 @@ def send(conn: Conn, data: bytes) -> int:
     mss:int=1024
     windows_length=conn.windows_length
     buffer=bytes_buffer(data)
+    
+    #cabiar a 1 mi ack
+    #mi sq
     #Mientras que haya que enviar
      #TODO:Implementar pipeline
     j=1
     while len(buffer)>0 :
         #TODO: Suponer que es solo un un cliente por ahora
         for i in range(len(conn.connected_address)):
-            d_addr=conn.connected_address[i]
-            flags=Flags()
-            
-            #Datos a enviar en esta iteración
-            send_data=buffer.get_count_bytes(windows_length)
-        
-            #Crear el paquete
-            packet=create_packet(conn,i,flags,send_data)
-            
-            #enviar 
-            conn.socket.sendto(packet,d_addr)
-            
-            #tamaño de los datos enviados solo los datos no incluye cabeceras
-            
-            data_length:int=len(send_data)
-            #TODO: despues poner los setTimeOut
-            #time.sleep(1)
-            
-            ii=0
-            while True:
-                ii+=1
-                if(ii>10):
-                    print("No se recibio a tiempo el ack esperado-------------------")
-                    break
-                #TODO: Poner el timeout
-                packet, _ = conn.socket.recvfrom(mss)
-                
-                
-                if(Is_the_packet_for_me(packet,d_addr)):
-                   
-                    continue
-                else:
-                    pass
-                    #print('paso ',ip,':',port)
-                
-                address, protocol, data, flags = data_conn(packet)
-                tcp_header=Protocol_Wrapped(protocol)
-                if(d_addr==address  ):
-                    rec_ack=convert_bytes_to_int(tcp_header.ack_num)
-                    seq=convert_bytes_to_int(conn.seq[i])
-                    
-                    ack=convert_bytes_to_int(conn.ack[i])
-                    #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
-                
-                    assert  rec_ack ==ack+data_length,f"No es el ack esperado, esperado:{ack}, recibido {rec_ack}"
-                    assert flags.ACK ,f'el flag debe ACK no esta 1'
-                    assert 
-                    if(flags.ACK and rec_ack ==  ack+data_length):
-                        print('Se recibio un paquete de ACK, aca')
-                        break
-              #TODO:AÑadir si es para desconectar
+            a=0
+            while True:   
+                 a+=1
+                 d_addr=conn.connected_address[i]
+                 flags=Flags()
+
+                 #Datos a enviar en esta iteración
+                 send_data=buffer.get_count_bytes(windows_length)
+
+                 #Crear el paquete
+                 packet=create_packet(conn,i,flags,send_data)
+
+                 #enviar 
+                 conn.socket.sendto(packet,d_addr)
+
+                 #tamaño de los datos enviados solo los datos no incluye cabeceras
+
+                 data_length:int=len(send_data)
+                 #TODO: despues poner los setTimeOut
+                 #time.sleep(1)
+
+                 ii=0
+                 while True:
+                     ii+=1
+                     if(ii>10):
+                         print("No se recibio a tiempo el ack esperado-------------------")
+                         break
+                     #TODO: Poner el timeout
+                     packet, _ = conn.socket.recvfrom(mss)
+
+                    # assert Is_the_packet_for_me(packet,d_addr),f'El paquete no es para mi'
+                     if(Is_the_packet_for_me(packet,conn.origin_address)):
+                             print("JJJJJJJJJJJJJJJKK")
+                             address, protocol, data, flags = data_conn(packet)
+                             tcp_header=Protocol_Wrapped(protocol)
+
+                             rec_ack=convert_bytes_to_int(tcp_header.ack_num)
+                             rec_seq=convert_bytes_to_int(tcp_header.seq_num)
+                             seq=convert_bytes_to_int(conn.seq[i])
+                             import os
+
+# Limpiar la consola
+                             os.system('cls' if os.name == 'nt' else 'clear') 
+                             ack=convert_bytes_to_int(conn.ack[i])
+                             print("Se recibio un paquete de ACK")
+                             print('mi ack',ack)
+                             print('mi seq',seq)
+                             print('el ack recibido',rec_ack)
+                             print('el seq recibido',rec_seq)       
+                             
+                             #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
+
+                             assert  rec_ack ==ack+data_length,f"No es el ack esperado, esperado:{ack}, recibido {rec_ack} en la iteración{a} con dalta{data_length}"
+                             assert flags.ACK ,f'el flag debe ACK no esta 1'
+                             assert  flags.SYN==0,f'el flag debe SYN no esta 0'
+                             if(flags.ACK and rec_ack ==  ack+data_length):
+                                 print('Se recibio un paquete de ACK, aca')
+                                 break
+                   #TODO:AÑadir si es para desconectar
                 
         print('Se envio un paquete')  
             
@@ -290,7 +301,7 @@ def recv(conn: Conn, length: int) -> bytes:
         i+=1
         packet, _ = conn.socket.recvfrom(mss)
         address, protocol, data, flags = data_conn(packet)
-        assert len(data)==44,f'El tamaño del paquete no es el esperado, se espera : {48} y se recibe {len(data)}'
+        assert len(data)==4,f'El tamaño del paquete no es el esperado, se espera : {48} y se recibe {len(data)}'
         #Si es acuse de recibo continuar
         
         """

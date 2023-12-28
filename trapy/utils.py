@@ -95,7 +95,7 @@ def data_conn(packet: bytes):
     mas como parametro en todos lados que representa el tamaño de la cabecera (offset)
     """
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
-
+    #ip_header, protocol, data = packet[0:20], packet[20:40], packet[40:]
    
     #Se usa el ip_header para extraer el ip del que envia el paquete
     ip = '.'.join(map(str,ip_header[12:16]))
