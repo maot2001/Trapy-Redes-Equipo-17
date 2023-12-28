@@ -107,11 +107,13 @@ def accept(conn: Conn):
                 continue
 
             logger.info(f'ack received')
+            print("server receiving ack from client")
+            print("three handshake complete")
             #Ya se establecio la conexion, tree handshake completado, luego se actualizan los valores de ack y seq en el server
             conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
             return conn
 
-def dial(address: str, clients) -> Conn:
+def dial(address: str) -> Conn:
     address = parse_address(address)
     conn = Conn()
     #Aqui se solicita un ip y un puerto vacio para asignar al client
@@ -174,10 +176,11 @@ def dial(address: str, clients) -> Conn:
         packet = create_packet(conn, index, flags)
         
         logger.info(f'ack sending')
+        print("client sending ack to server")
         conn.socket.sendto(packet, conn.connected_address[index])
         #Se envia y se termina el tree handshake (debo poner las rectificaciones de si no llegan y cosas x el estilo)
         break
-    clients.append(conn)
+    return conn
     #esto es para sacar la conexion del cliente del hilo
 
 def send(conn: Conn, data: bytes) -> int:
@@ -188,23 +191,3 @@ def close(conn: Conn):
     conn.socket.close()
     logger.info(f'close connection')
     conn.socket = None
-
-
-addres = "127.68.0.10:5000"
-conn = listen(addres)
-server_thread = threading.Thread(target=accept, args=(conn,))
-server_thread.start()
-clients = []
-client_thread = threading.Thread(target=dial, args=(addres, clients))
-client_thread.start()
-
-server_thread.join()
-client_thread.join()
-
-print(conn.connected_address[0])
-print(int.from_bytes(conn.ack[0], byteorder='big', signed=False))
-print(int.from_bytes(conn.seq[0], byteorder='big', signed=False))
-
-print(clients[0].connected_address[0])
-print(int.from_bytes(clients[0].ack[0], byteorder='big', signed=False))
-print(int.from_bytes(clients[0].seq[0], byteorder='big', signed=False))
