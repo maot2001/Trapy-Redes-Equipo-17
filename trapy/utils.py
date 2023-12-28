@@ -83,6 +83,7 @@ def corrupt(protocol, data):
         exp_checksum &= AUX
         exp_checksum += 1
     exp_checksum = AUX - (exp_checksum & AUX)
+    assert exp_checksum == recv_checksum, f'Checksums do not match: {exp_checksum} != {recv_checksum}'
     return recv_checksum != exp_checksum
 
 def data_conn(packet: bytes):
@@ -95,15 +96,19 @@ def data_conn(packet: bytes):
     """
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
-    #Aqui se verifica el checksum del paquete con respecto a sus datos
-    if corrupt(protocol , data):
-        raise ConnException
-    
+   
     #Se usa el ip_header para extraer el ip del que envia el paquete
     ip = '.'.join(map(str,ip_header[12:16]))
 
     #Se usa el protocol para extraer el puerto del que envia el paquete
     port = int.from_bytes(protocol[:2],byteorder='big',signed=False)
+    
+    print(ip + str(port))
+     #Aqui se verifica el checksum del paquete con respecto a sus datos
+    assert not corrupt(protocol , data), 'Packet is corrupt'
+    if corrupt(protocol , data):
+        raise ConnException
+    
 
     #Se usa el byte de las flags para activarlas en un objeto Flags 
     flags = Flags(protocol[13])

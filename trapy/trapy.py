@@ -193,9 +193,7 @@ def recv(conn: Conn, length: int) -> bytes:
     
     
     mss:int=1024
-    
-    
-    
+
     #TODO: Añadir que el tamaño de ventana tiene que ser <= length restante    
     #TODO:Añadir en caso que el window lengh es > length hay que corregirlo
  
@@ -203,9 +201,7 @@ def recv(conn: Conn, length: int) -> bytes:
     buffer_length:int=0
     
     while True:
-       # packet=b'E\x00\x00<E\xb2@\x00@\x06\xf7\x06\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x00(\x00\x01\x00\x00@\x06|\xcc\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00m\xc9\x00\x00'
-       #
-       # packet=b'E\x00\x00FZ\xa6@\x00@\x06\xe2\x08\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x002\x00\x01\x00\x00@\x06|\xc2\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00]\x9b\x00\x00holamuindo'
+       
         packet, _ = conn.socket.recvfrom(mss)
         address, protocol, data, flags = data_conn(packet)
         #Si es acuse de recibo continuar
