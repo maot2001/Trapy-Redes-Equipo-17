@@ -181,7 +181,49 @@ def dial(address: str, clients) -> Conn:
     #esto es para sacar la conexion del cliente del hilo
 
 def send(conn: Conn, data: bytes) -> int:
-    sends(conn, data)
+    if conn.is_close:
+        return 0
+    data_send = 0
+    sender_timer = Timer(conn.duration)
+    sender_timer.start()
+    packets_data = divide_data(data, conn.max_data_packet)
+    conn.send_base = 0
+
+    timers = [Timer(1) for _ in range(len(packets_data))]
+    is_packet_send = [False for i in range(len(packets_data))]
+
+    print(f"LEN DATA: {len(packets_data)}")
+    windows_recv_packets = 0
+    window_timeout = False
+    while conn.send_base < len(packets_data) and not sender_timer.timeout():
+        window = range(conn.send_base, min(conn.send_base + conn.N, len(packets_data)))
+
+        logger.info(f"WINDOW SIZE: {conn.N}")
+        print(f"WINDOW SIZE : {conn.N}")
+
+        for i, packet_index in enumerate(window):
+            if not is_packet_send[packet_index] or timers[packet_index].timeout():
+                flags = 0
+                if packet_index == len(packets_data) - 1:
+                    flags = LAST_FLAG
+                p = Packet(src_port=conn.get_port(),
+                           dest_port=conn.get_dest_address()[1],
+                           seq_number=(conn.send_base_sequence_number + i) & 0xffffffff,
+                           data_len=len(packets_data[packet_index]),
+                           data=packets_data[packet_index],
+                           flags=flags)
+                is_packet_send[packet_index] = True
+                print(f'SeqNum send:{p.seq_number}')
+                logger.info(f'SeqNum send:{p.seq_number}')
+                conn.send(p.build())
+
+                if timers[packet_index].timeout():
+                    window_timeout = True
+
+                timers[packet_index] = Timer(0.5)
+                timers[packet_index].start()
+
+        recv_packet, _ = conn.recv()
 
 from recive_utils import join_byte_arrays
 def recv(conn: Conn, length: int) -> bytes:

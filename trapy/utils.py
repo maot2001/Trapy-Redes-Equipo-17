@@ -1,6 +1,10 @@
 import time
 from conn import Conn, ConnException
 from flags import Flags
+import os
+import random
+from typing import List
+
 AUX = (1 << 16) - 1
 
 def parse_address(address):
@@ -217,3 +221,60 @@ def end(conn : Conn, packet):
             conn.refresh(protocol)
             break
             """
+
+
+
+
+
+SYN = 0
+FIN = 1
+LAST = 2
+
+SYN_FLAG = 0b00000001
+FIN_FLAG = 0b00000010
+LAST_FLAG = 0b00000100
+
+def get_free_port(path):
+    if os.path.exists(path):
+        file = open('ports.trapy', 'r')
+        lines = file.readlines()
+        free_ports = [i for i in range(1, 65536)]
+        used_ports = list(map(int, lines[0].split()))
+        for port in used_ports:
+            free_ports.remove(port)
+
+        index = random.randint(0, len(free_ports))
+        file.close()
+        return free_ports[index]
+
+    return random.randint(1, 65536)
+
+def divide_data(data: bytes, length: int) -> List[bytes]:
+    divided_data = []
+    base = 0
+    while base < len(data):
+        upper = min(base + length, len(data))
+        if base == upper:
+            divided_data.append(int.to_bytes(data[base], length=1, byteorder='big'))
+        else:
+            divided_data.append(data[base:upper])
+        base += length
+
+    return divided_data
+
+def corrupted(data: bytes):
+    return checksum(data) != 0xffff
+
+def bit32_sum(a, b):
+    return (a + b) & 0xffffffff
+
+
+def index_bit(n, i):
+    return n >> i & 0b1
+
+def checksum(packet: bytes) -> int:
+    bit_sum = 0
+    for i in range(0, len(packet), 2):
+        bit_sum += int.from_bytes(packet[i:i + 2], byteorder='big')
+        bit_sum = (bit_sum >> 16) + (bit_sum & 0xffff)
+    return bit_sum

@@ -1,61 +1,121 @@
 import socket
+import os
+from typing import Tuple, Any, Optional
+import random
+from trapy.packet import Packet  # ,IPPacket
+from trapy.timer import Timer
+from trapy.utils import *
+import logging
 
+logger = logging.getLogger(__name__)
+Address = Tuple[str, int]
+path = "ports.trapy"
 class Conn:
-    """
-    Esta es la clase Conn. Aquí puedes describir la clase.
+    def __init__(self):
+        self.is_close = False
+        self.__socket = socket.socket(socket.AF_INET,
+                                      socket.SOCK_RAW,
+                                      socket.IPPROTO_TCP)
+        self.__socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
 
-    Atributos
-    ---------
-    origin_address : type
-       Address origen.
-    connected_address : type
-       Address Destino.
-    ack : bytes
-    
-        Descripción de ack. 
-    seq : bytes
-        Descripción de # secuencia.
-    windows_length : int
-        Descripción de windows_length.-
-        
-    """
+        self.duration = 30
 
-    def __init__(self, sock=None):
-        self.origin_address: tuple[str, int] = None
+        self.N: int = 1
+        self.send_base: int = 0
+        self.send_base_sequence_number: int = 1
 
-        """
-        Aqui van los datos de todas la conexiones q estan establecidas con el origin_address
-        
-        Se debe acceder a los datos de cada una por el indice asociado al connected_address, con este se puede saber los valores
-        de ack y seq, con nombre.connected_address.index(address) tienen ese indice, address deben recibirlo de data_conn luego
-        de separar la info del paquete recibido
-        
-        Para comprobar la existencia de address en connected_address pueden usar: if address in connected_address y asi evitar
-        errores de mensajes
+        self.recv_sequence_number: int = 0
+        self.buffer: bytes = b''
 
-        No me queda claro que el proyecto necesite estas listas de conexiones, creo que las conexiones de un origen con varios
-        destinos podria representarse como varios conn, pero para el send y recv no se que les sera mas comodo
+        # bufsize =  ip_header + my_protocol_header + data
+        self.max_data_packet = 512
+        self.__default_bufsize: int = 20 + 20 + self.max_data_packet
+        self.__dest_address: Optional[Address] = None
+        self.__port: int = 0
+        self.__host: str = ''
+        self.__set_timeout(3)
 
-        En accept hice un comentario sobre el tipado de self.ack y sel.seq
-        """
-        self.connected_address: list(tuple[str, int]) = []
-        self.ack: list(bytes) = []
-        self.seq: list(bytes) = []
-        
-        self.windows_length = 4
+    def __set_timeout(self, interval: float) -> None:
+        self.__socket.settimeout(interval)
 
-        if sock == None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-        self.socket = sock
+    def get_port(self) -> int:
+        return self.__port
 
-    def refresh(self, index: int, new_ack: int, new_seq: int, data: int):
-        """
-        Este metodo les permite modificar los ack y seq pasando el tamaño del paquete recibido, ahora mismo todos los valores
-        son int, pero puede hacerse con bytes o con lo que sea, la idea no cambia
-        """
-        self.seq[index] = new_ack.to_bytes(4,byteorder='big', signed=False)
-        new_seq += data
-        self.ack[index] = new_seq.to_bytes(4,byteorder='big', signed=False)
+    def get_dest_address(self) -> Address:
+        if self.__dest_address is None:
+            raise ConnException("Destination address is not set")
+        return self.__dest_address
+
+    def set_dest(self, address: Address) -> None:
+        self.__dest_address = address
+
+    def close(self) -> None:
+        self.N: int = 4
+        self.send_base: int = 0
+
+        self.recv_sequence_number: int = 0
+        self.buffer: bytes = b''
+
+        self.__dest_address: Optional[Address] = None
+        self.__port: int = 0
+        self.__host: str = ''
+
+        self.is_close = True
+
+    def bind(self, address: Address = None) -> None:
+        if address is None:
+            address = ('', get_free_port(path))
+        #
+        # if os.path.exists(path):
+        #     file = open(path, 'r')
+        #     lines = file.readlines()
+        #     used_ports = list(map(int, lines[0].split()))
+        #     if address[1] in used_ports:
+        #         raise ConnException(f"Port {address[1]} in use")
+        #     file.close()
+        #     file = open('ports.trapy', 'a')
+        #     file.write(f"{address[1]} ")
+        # else:
+        #     file = open('ports.trapy', 'w')
+        #     file.write(f"{address[1]} ")
+        self.__port = address[1]
+        self.__host = address[0]
+        # file.close()
+        logger.info(f'socket binded to address {address}')
+
+    def recv(self, timeout=0.5) -> Tuple[Optional[Packet], Any]:
+        packet = Packet()
+        address = ('', 0)
+        self.__set_timeout(timeout)
+        timer = Timer(timeout)
+        timer.start()
+        while True:
+            try:
+                data2, address = self.__socket.recvfrom(self.__default_bufsize)
+                data = data2[20:]
+                # print(f"Data recv: {data2}")
+                packet.unpack(data)
+                # print(f"Data recv: {data2}")
+            except socket.timeout:
+                timeout = timeout - timer.time()
+
+            if packet.dest_port == self.__port:
+                return packet, address
+
+            if timer.timeout():
+                return None, None
+            self.__set_timeout(timeout)
+
+    def send(self, data: bytes) -> int:
+        if self.__dest_address is None:
+            raise ConnException("Destination address is not set")
+        data = make_ip_header(self.__dest_address[0]) + data
+        # print(f'Data Send: {data}')
+        # ip = IPPacket(src='10.0.0.1', dst=self.__dest_address[0])
+        # ip_header = ip.assemble_ipv4_fields()
+        # data = ip_header + data
+        return self.__socket.sendto(data, self.__dest_address)
+
 
 class ConnException(Exception):
     pass
