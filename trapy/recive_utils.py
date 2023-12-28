@@ -43,3 +43,26 @@ def ack_packet_response(conn,index,tcp_header,new_date_l:int)->bool:
     packet=create_packet(conn,index,flags)
     conn.socket.sendto(packet, conn.connected_address[index])
     return True
+
+
+
+class bytes_buffer():
+    def __init__(self,data:bytes):
+        
+        self.buffer=[ data[i:i+1] for i in range(0,len(data))]
+        
+    def pop(self)->bytes:
+        if self.buffer:
+         return self.buffer.pop()
+    
+    def pop_count(self,count:int)->list:
+        return [self.buffer.pop() for _ in range(min(len(self.buffer),count))]
+    
+    def get_count_bytes(self,count:int)->bytes:
+        return b''.join(self.pop_count(count))
+    
+    
+    def __len__(self):
+        return len(self.buffer)
+
+

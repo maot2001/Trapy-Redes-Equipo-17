@@ -181,12 +181,23 @@ def dial(address: str) -> Conn:
         break
     return conn
     #esto es para sacar la conexion del cliente del hilo
+from recive_utils import *
 
 def send(conn: Conn, data: bytes) -> int:
-    sends(conn, data)
+    
+    mms:int=1024
+    windows_length=conn.windows_length
+    buffer=bytes_buffer(data)
+    for i in range(len(conn.connected_address)):
+        flags=Flags()
+        packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
+        conn.socket.sendto(packet,conn.connected_address[i])
+        
+        
+    
 
 
-from recive_utils import *
+
 
 
 
