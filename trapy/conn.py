@@ -1,4 +1,5 @@
 import socket
+import random
 
 class Conn:
     """
@@ -63,7 +64,19 @@ class Conn:
         h_seq= int.from_bytes(self.seq[-1],byteorder='big', signed=False)
         self.refresh(index,h_ack,h_seq+data_length,0)
 
-    
+    def bind(self, address = None) -> None:
+        if address is None:
+            while True:
+                try:
+                    ip_r = random.randint(11, 254)
+                    port_r = random.randint(4000, 8000)
+                    address = ("127.68.0." + str(ip_r), port_r)
+                    self.socket.bind(address)
+                except:
+                    continue
+                break
+        else:
+            self.socket.bind(address)
 
 class ConnException(Exception):
     pass
