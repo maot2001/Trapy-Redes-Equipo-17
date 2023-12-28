@@ -4,7 +4,6 @@ import random
 import threading
 from utils import *
 from conn import *
-from timer import Timer
 from _send import send as sends
 
 #Esto ahora mismo no esta haciendo nada relevante, no le presten mucha atencion, es un print bonito
@@ -185,6 +184,63 @@ def dial(address: str) -> Conn:
 
 def send(conn: Conn, data: bytes) -> int:
     sends(conn, data)
+from recive_utils import join_byte_arrays
+
+
+
+def recv(conn: Conn, length: int) -> bytes:
+    
+    
+    
+    mss:int=1024
+    
+    
+    
+    #TODO: Añadir que el tamaño de ventana tiene que ser <= length restante    
+    #TODO:Añadir en caso que el window lengh es > length hay que corregirlo
+ 
+    buffer:list=[]
+    buffer_length:int=0
+    
+    while True:
+       # packet=b'E\x00\x00<E\xb2@\x00@\x06\xf7\x06\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x00(\x00\x01\x00\x00@\x06|\xcc\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00m\xc9\x00\x00'
+       #
+       # packet=b'E\x00\x00FZ\xa6@\x00@\x06\xe2\x08\x7f\x00\x00\x01\x7f\x00\x00\x02E\x00\x002\x00\x01\x00\x00@\x06|\xc2\x7f\x00\x00\x01\x7f\x00\x00\x02\x04\xd6\x1f@\x00\x00\x00\x00\x00\x00\x00\x00P\x02 \x00]\x9b\x00\x00holamuindo'
+        packet, _ = conn.socket.recvfrom(mss)
+        address, protocol, data, flags = data_conn(packet)
+        #Si es acuse de recibo continuar
+        """
+        Momentáneamente si el ACK=1 => que es un mensaje de confirmación de algún tipo
+        """
+       
+        if(flags.ACK):
+            continue
+        print(len(data))
+        new_date_l=len(data)
+        
+        
+        if(buffer_length+new_date_l>length):
+           return join_byte_arrays(buffer) 
+        
+        buffer.append(data)
+        buffer_length+=new_date_l
+        
+        if(buffer_length+new_date_l==length):
+            return join_byte_arrays(buffer) 
+            
+        if flags.ACK == 0:
+            continue
+
+        index = conn.connected_address.index(address)
+        ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
+        ack += 1
+        if protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False):
+            continue
+
+        logger.info(f'ack received')
+        conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
+
+        return join_byte_arrays(buffer)
 
 
 def close(conn: Conn):
