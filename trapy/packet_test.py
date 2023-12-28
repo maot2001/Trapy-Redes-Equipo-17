@@ -12,7 +12,8 @@ def recv_Test_pack(addr:str):
 
     print("server accepted connection")
     print("Listo para recibir")
-    recv(conn, 1024)
+    print('Se recibió',recv(conn, 1024))
+
     print('Terminado el Recive')
     
     

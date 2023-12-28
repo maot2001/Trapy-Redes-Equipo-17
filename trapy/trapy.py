@@ -184,50 +184,82 @@ def dial(address: str) -> Conn:
 from recive_utils import *
 
 def send(conn: Conn, data: bytes) -> int:
-    
+    print("###############")
     mss:int=1024
     windows_length=conn.windows_length
     buffer=bytes_buffer(data)
     #Mientras que haya que enviar
      #TODO:Implementar pipeline
     j=1
-    while len(buffer)>0:
+    while len(buffer)>0 :
         #TODO: Suponer que es solo un un cliente por ahora
         for i in range(len(conn.connected_address)):
             d_addr=conn.connected_address[i]
             flags=Flags()
             send_data=buffer.get_count_bytes(windows_length)
-            spected_ack_from_client:int=convert_bytes_to_int(conn.seq[i])+len(send_data)
-            
-            print(f'El ack esperado es {spected_ack_from_client}')
-            
+            spected_ack_from_client:int=convert_bytes_to_int(conn.seq[i])+len(send_data) 
             packet=create_packet(conn,i,flags,send_data)
             conn.socket.sendto(packet,d_addr)
             j+=1
             print('Se envio el paquete ',j)
             #TODO: despues poner los setTimeOut
             #time.sleep(1)
+            i=0
             while True:
+                i+=1
+                if(i>10):
+                    print("No se recibio a tiempo el ack esperado")
+                    break
+                #TODO: Poner el timeout
                 packet, _ = conn.socket.recvfrom(mss)
+                
+                
+                
+                ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
+                 #Se usa el ip_header para extraer el ip del que envia el paquete
+                ip = '.'.join(map(str,ip_header[12:16]))
+
+                #Se usa el protocol para extraer el puerto del que envia el paquete
+                port = int.from_bytes(protocol[:2],byteorder='big',signed=False)
+                if((ip,port)!=d_addr):
+                    print("Estas cabeceras estan tratanto de conectar",ip,':',port)
+                    continue
+                else:
+                    print('paso ',ip,':',port)
+                
                 address, protocol, data, flags = data_conn(packet)
                 tcp_header=Protocol_Wrapped(protocol)
                 if(d_addr==address  ):
                     rec_ack=convert_bytes_to_int(tcp_header.ack_num)
-                    print(f'El ack recibido es {rec_ack}')
                     #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
-                    assert  rec_ack ==spected_ack_from_client,"No es el ack esperado"
+                    assert  rec_ack ==spected_ack_from_client,f"No es el ack esperado, esperado:{spected_ack_from_client}, recibido {rec_ack}"
                     if(flags.ACK and rec_ack ==spected_ack_from_client):
                         break
-                #TODO:AÑadir si es para desconectar
+              
+              #TODO:AÑadir si es para desconectar
                 
         print('Se envio un paquete')  
             
             #Esperar el acuse de recibo
     #Cerrar conexión
-    #flags=Flags()
-    #packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
-    #conn.socket.sendto(packet,conn.connected_address[i])
-    
+    #Envio mi petición de cierre de conexión
+    flags=Flags()
+    flags.FIN=1
+    packet=create_packet(conn,0,flags)
+    conn.socket.sendto(packet,conn.connected_address[0])
+    ##Leer si me mandaron el ack
+    packet, _ = conn.socket.recvfrom(mss)
+    address, protocol, data, flags = data_conn(packet)
+    tcp_header=Protocol_Wrapped(protocol)
+    if(flags.ACK and flags.FIN):
+        print('Se recibio un paquete de FIN-ACK')
+        conn.refresh(0,convert_bytes_to_int(tcp_header.ack_num),convert_bytes_to_int(tcp_header.seq_num),0) 
+        flags=Flags()
+        flags.ACK=1
+        packet=create_packet(conn,0,flags)
+        conn.socket.sendto(packet,conn.connected_address[0])
+        print('Se envio un el paquete que dice que se recibio el ACK-FIN, se cierra la conexion')
+        #TODO:Cerrar conexion
 
 
 
@@ -260,8 +292,20 @@ def recv(conn: Conn, length: int) -> bytes:
        
         if(flags.ACK):
             continue
-        print(len(data))
         new_date_l=len(data)
+        
+        tcp_header=Protocol_Wrapped(protocol)
+        #Se procede a inicial el cierre de conexion
+        if(flags.FIN):
+            print('Se recibio un paquete de fin')
+            conn.refresh(0,convert_bytes_to_int(tcp_header.ack_num),convert_bytes_to_int(tcp_header.seq_num),1) 
+            flags=Flags()
+            flags.FIN=1
+            flags.ACK=1
+            packet=create_packet(conn,0,flags)
+            conn.socket.sendto(packet,conn.connected_address[0])
+            print('Se envio un paquete de FIN-ACK')
+               
         
         #Si el tamaño del paquete es mayor al tamaño de la ventana
         if(buffer_length+new_date_l>length):
@@ -271,7 +315,7 @@ def recv(conn: Conn, length: int) -> bytes:
         
         buffer.append(data)
         buffer_length+=new_date_l
-        tcp_header=Protocol_Wrapped(protocol)
+        
         
         #SI llego a su maxima capacidad de ventana
         if(buffer_length+new_date_l==length):
@@ -283,9 +327,9 @@ def recv(conn: Conn, length: int) -> bytes:
         #Responderle por el ACK
         ack_packet_response(conn,index,tcp_header,new_date_l)
         
-        print(buffer,'testing')
-        if(i==3):
-            return join_byte_arrays(buffer)
+        
+    
+        return join_byte_arrays(buffer)
 
 
 def close(conn: Conn):
