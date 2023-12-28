@@ -57,5 +57,8 @@ class Conn:
         new_seq += data
         self.ack[index] = new_seq.to_bytes(4,byteorder='big', signed=False)
 
+
+    
+
 class ConnException(Exception):
     pass

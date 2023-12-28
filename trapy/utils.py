@@ -105,7 +105,7 @@ def data_conn(packet: bytes):
     
     print(ip + str(port))
      #Aqui se verifica el checksum del paquete con respecto a sus datos
-    assert not corrupt(protocol , data), 'Packet is corrupt'
+    assert not corrupt(protocol , data), f'Packet is corrupt con data: {str(data)}'
     if corrupt(protocol , data):
         raise ConnException
     

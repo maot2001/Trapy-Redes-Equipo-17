@@ -185,17 +185,48 @@ from recive_utils import *
 
 def send(conn: Conn, data: bytes) -> int:
     
-    mms:int=1024
+    mss:int=1024
     windows_length=conn.windows_length
     buffer=bytes_buffer(data)
     #Mientras que haya que enviar
+     #TODO:Implementar pipeline
+    j=1
     while len(buffer)>0:
+        #TODO: Suponer que es solo un un cliente por ahora
         for i in range(len(conn.connected_address)):
+            d_addr=conn.connected_address[i]
             flags=Flags()
-            packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
-            conn.socket.sendto(packet,conn.connected_address[i])
+            send_data=buffer.get_count_bytes(windows_length)
+            spected_ack_from_client:int=convert_bytes_to_int(conn.seq[i])+len(send_data)
             
-        
+            print(f'El ack esperado es {spected_ack_from_client}')
+            
+            packet=create_packet(conn,i,flags,send_data)
+            conn.socket.sendto(packet,d_addr)
+            j+=1
+            print('Se envio el paquete ',j)
+            #TODO: despues poner los setTimeOut
+            #time.sleep(1)
+            while True:
+                packet, _ = conn.socket.recvfrom(mss)
+                address, protocol, data, flags = data_conn(packet)
+                tcp_header=Protocol_Wrapped(protocol)
+                if(d_addr==address  ):
+                    rec_ack=convert_bytes_to_int(tcp_header.ack_num)
+                    print(f'El ack recibido es {rec_ack}')
+                    #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
+                    assert  rec_ack ==spected_ack_from_client,"No es el ack esperado"
+                    if(flags.ACK and rec_ack ==spected_ack_from_client):
+                        break
+                #TODO:AÑadir si es para desconectar
+                
+        print('Se envio un paquete')  
+            
+            #Esperar el acuse de recibo
+    #Cerrar conexión
+    #flags=Flags()
+    #packet=create_packet(conn,i,flags,buffer.get_count_bytes(windows_length))
+    #conn.socket.sendto(packet,conn.connected_address[i])
     
 
 
@@ -248,7 +279,7 @@ def recv(conn: Conn, length: int) -> bytes:
         
 
         index = conn.connected_address.index(address)
-        
+       # time.sleep(0.5)
         #Responderle por el ACK
         ack_packet_response(conn,index,tcp_header,new_date_l)
         

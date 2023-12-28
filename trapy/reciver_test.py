@@ -30,7 +30,7 @@ def recv_Test_pack(addr:str):
     print("server accepted connection")
     print("Listo para recibir")
     print(f' Valor del recv : {recv(conn, 1024)}')
-    print('Terminado el Recive')
+    print('Terminado el Recive',' Estoy terminando este hilo')
 
 # Crear un bucle de eventos
 # = asyncio.get_event_loop()

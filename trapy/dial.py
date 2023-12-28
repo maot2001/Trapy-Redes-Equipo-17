@@ -14,6 +14,7 @@ def send_Test_pack(addr:str,flags:Flags,data:bytes=b''):
     
 flags=Flags()
 flags.SYN=0
-data=b'hola'
+word =str([i for i in range(0,10)])
+data=b'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiinmvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv'
 addr="127.68.0.10:5000"
 send_Test_pack(addr,flags,data)
