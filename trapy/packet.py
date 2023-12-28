@@ -30,6 +30,8 @@ def create_last_send_packet(conn, seq_num, ack, data):
 def my_unpack(packed_data):
     ipHeader = packed_data[0:20]
     tcpHeader = packed_data[20:38]
+    #TODO: cambiar al 40 y poner el urgent pointer
+
     body = packed_data[38:]
 
     pack = Packet()

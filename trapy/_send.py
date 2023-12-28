@@ -8,7 +8,7 @@ TIMEOUT_INTERVAL = 0.5
 PACKET_SIZE = 512
 END_CONN_INTERVAL = 5
 end_conn_timer = False
-
+WINDOW_SIZE = 4
 
 base = 0
 send_timer = Timer(TIMEOUT_INTERVAL)
@@ -21,7 +21,7 @@ def send(conn:Conn, data):
     global send_timer
 
     sock = conn.socket
-
+    addr_ip,addr_port=conn.connected_address[0]
     RECEIVER_ADDR = (conn.connected_address[0], conn.connected_address[1] )
 
     packets = create_pack_list(conn, data)
@@ -92,7 +92,7 @@ def countdown(t):
     mutex.release()
     raise Exception('WAITING TIME EXCEDED')
 
-WINDOW_SIZE = 4
+
 def set_window_size(num_packets):
     global base
     return min(WINDOW_SIZE, num_packets - base)

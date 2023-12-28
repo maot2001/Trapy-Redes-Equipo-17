@@ -184,6 +184,29 @@ def send(conn: Conn, data: bytes) -> int:
     sends(conn, data)
 
 
+def recv(conn: Conn, length: int) -> bytes:
+    while True:
+        try:
+            packet, _ = conn.socket.recvfrom(1024)
+            address, protocol, _, flags = data_conn(packet)
+        except:
+            continue
+
+        if flags.ACK == 0:
+            continue
+
+        index = conn.connected_address.index(address)
+        ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
+        ack += 1
+        if protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False):
+            continue
+
+        logger.info(f'ack received')
+        conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
+
+        return packet[38:]
+    
+
 def close(conn: Conn):
     conn.socket.close()
     logger.info(f'close connection')

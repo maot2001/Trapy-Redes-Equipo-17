@@ -92,6 +92,19 @@ def data_conn(packet: bytes):
     son los 1ros 20 bytes pero no son el ip_header, en este orden esta correcto salvo que se quiera variar el tamaño de la 
     cabecera del tcp_header, pero esa implementacion no es compleja, si da tiempo la hago al final xq implicaria pasar un dato
     mas como parametro en todos lados que representa el tamaño de la cabecera (offset)
+    
+    Args:
+        packet (bytes): El paquete de datos de red a procesar.
+        
+    Returns:
+        tuple: Una tupla que contiene la siguiente información:
+            - Una tupla con la dirección IP y el puerto del remitente del paquete.
+            - El encabezado del protocolo.
+            - Los datos del paquete.
+            - Las banderas activadas en el byte de las flags del protocolo.
+            
+    Raises:
+        ConnException: Si el paquete está corrupto.
     """
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
