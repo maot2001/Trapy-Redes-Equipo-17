@@ -184,7 +184,9 @@ def dial(address: str) -> Conn:
 
 def send(conn: Conn, data: bytes) -> int:
     sends(conn, data)
-from recive_utils import join_byte_arrays
+
+
+from recive_utils import *
 
 
 
@@ -205,36 +207,39 @@ def recv(conn: Conn, length: int) -> bytes:
         packet, _ = conn.socket.recvfrom(mss)
         address, protocol, data, flags = data_conn(packet)
         #Si es acuse de recibo continuar
+        
         """
         Momentáneamente si el ACK=1 => que es un mensaje de confirmación de algún tipo
         """
+        #Si es un paquete de datos con este flag lo ignoro que vuelva a reenviarlo bien
+        if(flags.SYN):
+            continue
        
         if(flags.ACK):
             continue
         print(len(data))
         new_date_l=len(data)
         
-        
+        #Si el tamaño del paquete es mayor al tamaño de la ventana
         if(buffer_length+new_date_l>length):
-           return join_byte_arrays(buffer) 
+           continue
+       #TODO:Por decidir si espero su nuevos bytes o trunco
+       #POr defecto esta esperar
         
         buffer.append(data)
         buffer_length+=new_date_l
+        tcp_header=Protocol_Wrapped(protocol)
         
+        #SI llego a su maxima capacidad de ventana
         if(buffer_length+new_date_l==length):
             return join_byte_arrays(buffer) 
-            
-        if flags.ACK == 0:
-            continue
+        
 
         index = conn.connected_address.index(address)
-        ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
-        ack += 1
-        if protocol[8:12] != ack.to_bytes(4,byteorder='big', signed=False):
-            continue
-
-        logger.info(f'ack received')
-        conn.refresh(index, int.from_bytes(protocol[8:12], byteorder='big', signed=False), int.from_bytes(protocol[4:8], byteorder='big', signed=False), 0)
+        
+        #Responderle por el ACK
+        ack_packet_response(conn,index,tcp_header,new_date_l)
+        
 
         return join_byte_arrays(buffer)
 
