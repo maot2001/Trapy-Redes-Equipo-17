@@ -75,13 +75,20 @@ def convert_bytes_to_int(data:bytes):
     return int.from_bytes(data,byteorder='big', signed=False)
 
 
-def ack_packet_response(conn,index,new_data_length:int)->bool:
-    conn.refresh_(index,new_data_length)
+def ack_packet_response(tcp_header:Protocol_Wrapped,conn,index,new_data_length:int)->bool:
+    #conn.refresh_(index,new_data_length)
     flags:flags=Flags()
     flags.ACK=1 
+    input("PPP")
+    
+    conn.ack[index]=int_to_bytes(convert_bytes_to_int(tcp_header.seq_num)+new_data_length,4)
+    print(convert_bytes_to_int(conn.ack[index]))
+    conn.seq[index]=tcp_header.seq_ack
+    
+    
     packet=create_packet(conn,index,flags)
-    return packet
-    #conn.socket.sendto(packet, conn.connected_address[index])
+    
+    conn.socket.sendto(packet, conn.connected_address[index])
     return True
 
 

@@ -189,6 +189,9 @@ def send(conn: Conn, data: bytes) -> int:
     windows_length=conn.windows_length
     buffer=bytes_buffer(data)
     
+    my_ack=conn.ack[0]
+    my_seq=conn.seq[0]
+    
     #cabiar a 1 mi ack
     #mi sq
     #Mientras que haya que enviar
@@ -226,7 +229,7 @@ def send(conn: Conn, data: bytes) -> int:
                          break
                      #TODO: Poner el timeout
                      packet, _ = conn.socket.recvfrom(mss)
-
+                     
                     # assert Is_the_packet_for_me(packet,d_addr),f'El paquete no es para mi'
                      if(Is_the_packet_for_me(packet,conn.origin_address)):
                              print("JJJJJJJJJJJJJJJKK")
@@ -242,14 +245,14 @@ def send(conn: Conn, data: bytes) -> int:
                              os.system('cls' if os.name == 'nt' else 'clear') 
                              ack=convert_bytes_to_int(conn.ack[i])
                              print("Se recibio un paquete de ACK")
-                             print('mi ack',ack)
-                             print('mi seq',seq)
+                             print('mi ack',convert_bytes_to_int(my_ack))
+                             print('mi seq',convert_bytes_to_int(my_seq))
                              print('el ack recibido',rec_ack)
                              print('el seq recibido',rec_seq)       
-                             
+                             my_ack=convert_bytes_to_int(my_ack)
                              #Si tiene el ack y el seq+cant bytes enviados es = al ack number del paquete ack
 
-                             assert  rec_ack ==ack+data_length,f"No es el ack esperado, esperado:{ack}, recibido {rec_ack} en la iteración{a} con dalta{data_length}"
+                             assert  rec_seq ==my_ack+data_length,f"No es el ack esperado, esperado:{ack}, recibido {rec_ack} en la iteración{a} con dalta{data_length}"
                              assert flags.ACK ,f'el flag debe ACK no esta 1'
                              assert  flags.SYN==0,f'el flag debe SYN no esta 0'
                              if(flags.ACK and rec_ack ==  ack+data_length):
@@ -289,7 +292,8 @@ def send(conn: Conn, data: bytes) -> int:
 def recv(conn: Conn, length: int) -> bytes:
     
     r=False
-    
+    my_ack=conn.ack[0]
+    my_seq=conn.seq[0]
     
     mss:int=1024    
     #TODO: Añadir que el tamaño de ventana tiene que ser <= length restante    
@@ -344,7 +348,7 @@ def recv(conn: Conn, length: int) -> bytes:
         
 
         index = conn.connected_address.index(address)
-        ack_packet_response(conn,index,new_data_length)
+        ack_packet_response(tcp_header,conn,index,new_data_length)
         print('Se envio un paquete de ACK Hacia el SEND con ask: ',conn)
     
         return join_byte_arrays(buffer)
