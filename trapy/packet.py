@@ -1,7 +1,6 @@
 import socket
 import struct
-
-from trapy.utils import checksum
+#from utils import checksum
 
 
 class PacketException(Exception):
@@ -81,3 +80,9 @@ class Packet:
         self.flags = info[5]
         self.window = info[6]
         self.checksum = info[7]
+def checksum(packet: bytes) -> int:
+    bit_sum = 0
+    for i in range(0, len(packet), 2):
+        bit_sum += int.from_bytes(packet[i:i + 2], byteorder='big')
+        bit_sum = (bit_sum >> 16) + (bit_sum & 0xffff)
+    return bit_sum

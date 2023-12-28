@@ -1,11 +1,51 @@
 import logging
-import time
 import random
-import threading
 from utils import *
 from conn import *
-from timer import Timer
-from _send import send as sends
+#from trapy.timer import Timer
+
+
+
+
+import time
+
+
+class Timer(object):
+    TIMER_STOP = -1
+
+    def __init__(self, duration):
+        self._start_time = self.TIMER_STOP
+        self._duration = duration
+
+    # Starts the timer
+    def start(self):
+        if self._start_time == self.TIMER_STOP:
+            self._start_time = time.time()
+
+    # Stops the timer
+    def stop(self):
+        if self._start_time != self.TIMER_STOP:
+            self._start_time = self.TIMER_STOP
+
+    # Determines whether the timer is running
+    def running(self):
+        return self._start_time != self.TIMER_STOP
+
+    # Determines whether the timer timed out
+    def timeout(self):
+        if not self.running():
+            return False
+        else:
+            return time.time() - self._start_time >= self._duration
+
+    # Current time since timer started in seconds
+    def time(self):
+        return time.time() - self._start_time
+
+
+
+
+
 
 #Esto ahora mismo no esta haciendo nada relevante, no le presten mucha atencion, es un print bonito
 logger = logging.getLogger(__name__)

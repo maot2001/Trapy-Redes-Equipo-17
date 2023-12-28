@@ -1,11 +1,13 @@
 import socket
-import os
 from typing import Tuple, Any, Optional
-import random
-from trapy.packet import Packet  # ,IPPacket
-from trapy.timer import Timer
-from trapy.utils import *
+from packet import Packet
+ # ,IPPacket
+#from timer import Timer
 import logging
+import os
+import random
+import time
+from typing import List
 
 logger = logging.getLogger(__name__)
 Address = Tuple[str, int]
@@ -119,3 +121,60 @@ class Conn:
 
 class ConnException(Exception):
     pass
+
+
+
+def get_free_port(path):
+    if os.path.exists(path):
+        file = open('ports.trapy', 'r')
+        lines = file.readlines()
+        free_ports = [i for i in range(1, 65536)]
+        used_ports = list(map(int, lines[0].split()))
+        for port in used_ports:
+            free_ports.remove(port)
+
+        index = random.randint(0, len(free_ports))
+        file.close()
+        return free_ports[index]
+
+    return random.randint(1, 65536)
+
+def make_ip_header(dest: str) -> bytes:
+    ip_header = b'\x45\x00\x00\x28'  # Version, IHL, Type of Service | Total Length
+    ip_header += b'\xab\xcd\x00\x00'  # Identification | Flags, Fragment Offset
+    ip_header += b'\x40\x06\xa6\xec'  # TTL, Protocol | Header Checksum
+
+    host = '10.0.0.1'
+
+
+class Timer(object):
+    TIMER_STOP = -1
+
+    def __init__(self, duration):
+        self._start_time = self.TIMER_STOP
+        self._duration = duration
+
+    # Starts the timer
+    def start(self):
+        if self._start_time == self.TIMER_STOP:
+            self._start_time = time.time()
+
+    # Stops the timer
+    def stop(self):
+        if self._start_time != self.TIMER_STOP:
+            self._start_time = self.TIMER_STOP
+
+    # Determines whether the timer is running
+    def running(self):
+        return self._start_time != self.TIMER_STOP
+
+    # Determines whether the timer timed out
+    def timeout(self):
+        if not self.running():
+            return False
+        else:
+            return time.time() - self._start_time >= self._duration
+
+    # Current time since timer started in seconds
+    def time(self):
+        return time.time() - self._start_time
