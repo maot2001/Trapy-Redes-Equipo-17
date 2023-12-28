@@ -83,6 +83,7 @@ def corrupt(protocol, data):
         exp_checksum &= AUX
         exp_checksum += 1
     exp_checksum = AUX - (exp_checksum & AUX)
+    assert recv_checksum != exp_checksum,f"Paquete corrompido {recv_checksum} {exp_checksum}"
     return recv_checksum != exp_checksum
 
 def data_conn(packet: bytes):
@@ -109,6 +110,7 @@ def data_conn(packet: bytes):
     ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
 
     #Aqui se verifica el checksum del paquete con respecto a sus datos
+    assert not corrupt(protocol , data),"Paquete corrompido"
     if corrupt(protocol , data):
         raise ConnException
     

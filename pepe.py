@@ -1,4 +1,10 @@
-b"\x50"
+def join_byte_arrays(byte_arrays):
+    return b''.join(byte_arrays)
+
+# Ejemplo de uso
+byte_arrays = [b'Hello, ', b'world!']
+joined_bytes = join_byte_arrays(byte_arrays)
+print(joined_bytes)  # Imprime: b'Hello, world!'b"\x50"
 print(b"\x50")
 
 
@@ -39,3 +45,30 @@ print(is_packet_corrupt(ip_packet))
 
 
 
+def join_byte_arrays(byte_arrays):
+    return b''.join(byte_arrays)
+
+# Ejemplo de uso
+arr1=[b'Hello,']
+arr2=[b'world!']
+byte_arrays = [ arr1,arr2]
+#joined_bytes = join_byte_arrays(byte_arrays)
+#print(joined_bytes)  # Imprime: b'Hello, world!'
+
+def join_byte_arrays(byte_arrays):
+    # Aplanar la lista de listas en una sola lista
+    flattened = [item for sublist in byte_arrays for item in sublist]
+    
+    # Unir todos los arrays de bytes en uno solo
+    return b''.join(flattened)
+
+# Ejemplo de uso
+arr1 = [b'Hello,']
+arr2 = [b'world!']
+byte_arrays = [arr1, arr2]
+joined_bytes = join_byte_arrays(byte_arrays)
+print(joined_bytes)  # Imprime: b'Hello,world!'
+
+
+a:int=4
+a="j"
