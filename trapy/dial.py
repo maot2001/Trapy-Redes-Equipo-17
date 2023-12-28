@@ -16,5 +16,6 @@ flags=Flags()
 flags.SYN=0
 word =str([i for i in range(0,10)])
 data=b'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiinmvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv,'
+data=b'holo mundo NVINVAUIERNVJSENVUJFNVUINEARUIVNARUIV'
 addr="127.68.0.10:5000"
 send_Test_pack(addr,flags,data)

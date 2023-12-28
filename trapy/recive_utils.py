@@ -75,10 +75,8 @@ def convert_bytes_to_int(data:bytes):
     return int.from_bytes(data,byteorder='big', signed=False)
 
 
-def ack_packet_response(conn,index,tcp_header,new_date_l:int)->bool:
-    h_ack=convert_bytes_to_int(tcp_header.ack_num)
-    h_seq=convert_bytes_to_int(tcp_header.seq_num)
-    conn.refresh(index,h_ack,h_seq,new_date_l)
+def ack_packet_response(conn,index,new_data_length:int)->bool:
+    conn.refresh_(index,new_data_length)
     flags:flags=Flags()
     flags.ACK=1 
     packet=create_packet(conn,index,flags)
@@ -111,5 +109,22 @@ class bytes_buffer():
     
     def __len__(self):
         return len(self.buffer)
+
+
+
+
+
+def Is_the_packet_for_me(packet:bytes,d_addr)->bool:
+    """
+    Esta funcion se encarga de verificar si el paquete recibido es para la conexion que se esta recibiendo
+    """
+    
+    ip_header, protocol, data = packet[20:40], packet[40:60], packet[60:]
+     #Se usa el ip_header para extraer el ip del que envia el paquete
+    ip = '.'.join(map(str,ip_header[12:16]))
+    #Se usa el protocol para extraer el puerto del que envia el paquete
+    port = int.from_bytes(protocol[:2],byteorder='big',signed=False)
+    
+    return (ip,port)!=d_addr
 
 

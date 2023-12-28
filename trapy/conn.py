@@ -57,6 +57,11 @@ class Conn:
         new_seq += data
         self.ack[index] = new_seq.to_bytes(4,byteorder='big', signed=False)
 
+    
+    def refresh_(self,index:int,data_length:int):
+        h_ack= int.from_bytes(self.ack[-1],byteorder='big', signed=False)
+        h_seq= int.from_bytes(self.seq[-1],byteorder='big', signed=False)
+        self.refresh(index,h_ack,h_seq+data_length,0)
 
     
 

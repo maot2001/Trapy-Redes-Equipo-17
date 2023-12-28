@@ -10,7 +10,7 @@ import threading
 
 flags=Flags()
 flags.SYN=0
-data=b'holo mundo'
+data=b'holo mundo NVINVAUIERNVJSENVUJFNVUINEARUIVNARUIV'
 addr="127.68.0.10:5000"
 
 def send_Test_pack(addr:str,flags:Flags,data:bytes=b''):

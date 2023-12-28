@@ -47,3 +47,7 @@ print(b.buffer)
 print(b.pop_count(20))
 print(b.buffer)
 """
+
+
+
+print(len(b'holo mundo NVINVAUIERNVJSENVUJFNVUINEARUIVNARUIV'))
