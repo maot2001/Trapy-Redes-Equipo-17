@@ -148,11 +148,11 @@ def send(conn: Conn, data: bytes) -> int:
     time_out = 0#veces que modifico el timeout
 
     timer = time.time()  # Inicializa timer para la primera transmisión
-    #conn.socket.sendto(packet, conn.connected_address[0])
-
+    conn.socket.sendto(packet, conn.connected_address[0])
+    conn.socket.settimeout(0.5)
     while True:
         try:
-            packet, _ = conn.socket.recvfrom(mss, timeout=1)
+            packet, _ = conn.socket.recvfrom(mss)
             address, protocol, data, flags = data_conn(packet)
             print("entra")
         except:
@@ -189,6 +189,7 @@ def send(conn: Conn, data: bytes) -> int:
 
 def recv(conn: Conn, length: int) -> bytes:
     data = 0
+    time.sleep(10)
     while True:
         try:
             packet, _ = conn.socket.recvfrom(length)
