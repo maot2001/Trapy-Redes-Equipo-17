@@ -184,8 +184,65 @@ def dial(address: str) -> Conn:
     #esto es para sacar la conexion del cliente del hilo
 
 def send(conn: Conn, data: bytes) -> int:
-    sends(conn, data)
+    mss: int = 1024
+    data_len = len(data)
+    flags = Flags()
+    packet = create_packet(conn, 0, flags, data)
+    conn.socket.sendto(packet, conn.connected_address[0])
 
+    while True:
+        try:
+            packet, _ = conn.socket.recvfrom(mss)
+            address, protocol, data, flags = data_conn(packet)
+        except:
+            continue
+
+        if address != conn.connected_address[0]:
+            continue
+
+        tcp_header = Protocol_Wrapped(protocol)
+        seq = convert_bytes_to_int(conn.seq[0])
+        seq += data_len
+        rec_ack = convert_bytes_to_int(tcp_header.ack_num)
+        
+        time.sleep(5)
+        if flags.ACK == 0 or seq != rec_ack:
+            continue
+        
+        break
+    return data_len
+
+def recv(conn: Conn, length: int) -> bytes:
+    data = 0
+    while True:
+        try:
+            packet, _ = conn.socket.recvfrom(length)
+            address, protocol, data, flags = data_conn(packet)
+        except:
+            continue
+
+        if not address in conn.connected_address:
+            continue
+
+        index = conn.connected_address.index(address)
+        if flags.SYN == 1 or flags.ACK == 1 or flags.FIN == 1 or flags.RST == 1:
+            continue
+
+        tcp_header = Protocol_Wrapped(protocol)
+        rec_ack = tcp_header.ack_num
+        
+        if conn.seq[index] != rec_ack:
+            continue
+        
+        ack = convert_bytes_to_int(conn.ack[index])
+        ack += len(data)
+        conn.ack[index] = ack.to_bytes(4, byteorder='big', signed=False)
+        flags = Flags()
+        flags.ACK = 1
+        packet = create_packet(conn, index, flags)
+        conn.socket.sendto(packet, conn.connected_address[index])
+        break
+    return data
 
 def close(conn: Conn):
     conn.socket.close()
