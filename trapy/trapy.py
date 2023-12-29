@@ -161,7 +161,6 @@ def send(conn: Conn, data: bytes) -> int:
         seq += data_len
         rec_ack = convert_bytes_to_int(tcp_header.ack_num)
         
-        time.sleep(5)
         if flags.ACK == 0 or seq != rec_ack:
             continue
         

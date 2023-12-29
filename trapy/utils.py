@@ -3,6 +3,19 @@ from conn import Conn, ConnException
 from flags import Flags
 AUX = (1 << 16) - 1
 
+class Protocol_Wrapped:
+    
+    def __init__(self,protocol:bytes):
+        self.protocol=protocol
+        self.o_port=protocol[0:2]
+        self.d_port=protocol[2:4]
+        self.seq_num=protocol[4:8]
+        self.ack_num=protocol[8:12]
+        self.window_size=protocol[14:16]
+
+def convert_bytes_to_int(data:bytes):
+    return int.from_bytes(data,byteorder='big', signed=False)
+    
 def parse_address(address):
     host, port = address.split(':')
 
