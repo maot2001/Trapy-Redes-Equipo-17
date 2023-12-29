@@ -4,7 +4,6 @@ import random
 import threading
 from utils import *
 from conn import *
-from timer import Timer
 from _send import send as sends
 
 logger = logging.getLogger(__name__)
@@ -138,11 +137,17 @@ def dial(address: str) -> Conn:
         break
     return conn
 
+import time
+
 def send(conn: Conn, data: bytes) -> int:
+    print("soy yo")
     mss: int = 1024
     data_len = len(data)
     flags = Flags()
     packet = create_packet(conn, 0, flags, data)
+    time_out = 0#veces que modifico el timeout
+
+    timer = time.time()  # Inicializa timer para la primera transmisión
     conn.socket.sendto(packet, conn.connected_address[0])
 
     while True:
@@ -150,10 +155,22 @@ def send(conn: Conn, data: bytes) -> int:
             packet, _ = conn.socket.recvfrom(mss)
             address, protocol, data, flags = data_conn(packet)
         except:
+            if time.time() - timer >= conn.time_out:  # Retransmitir si timeout
+                print ("entro en el timeout")
+                time_out = time_out+1
+                if(time_out>5):#actualiza el timeout pq tal vez es muy pequeño
+                    conn.time_out = conn.time_out +2
+                conn.socket.sendto(packet, conn.connected_address[0])
+                timer = time.time()  # Reiniciar timer
+                if(conn.time_out>60):# revisa q no este esperando mas de un minuto
+                    raise ConnException()
             continue
+
+        
 
         if address != conn.connected_address[0]:
             continue
+        
 
         tcp_header = Protocol_Wrapped(protocol)
         seq = convert_bytes_to_int(conn.seq[0])
@@ -162,7 +179,10 @@ def send(conn: Conn, data: bytes) -> int:
         
         if flags.ACK == 0 or seq != rec_ack:
             continue
-        
+
+        timer = time.time()# como el ack esperado es correcto reinicia el tiempo
+        time_out = 0
+        conn.time_out = 2
         break
     return data_len
 
@@ -173,6 +193,7 @@ def recv(conn: Conn, length: int) -> bytes:
             packet, _ = conn.socket.recvfrom(length)
             address, protocol, data, flags = data_conn(packet)
         except:
+            
             continue
 
         if not address in conn.connected_address:

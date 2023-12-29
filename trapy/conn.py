@@ -9,7 +9,7 @@ class Conn:
         self.connected_address: list(tuple[str, int]) = []
         self.ack: list(bytes) = []
         self.seq: list(bytes) = []
-        
+        self.time_out = 1
         self.windows_length = 4
 
         if sock == None:
