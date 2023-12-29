@@ -7,9 +7,15 @@ def send_Test_pack(addr:str,flags:Flags,data:bytes=b''):
     print('Comienza a ejecuatrse el dial en:',addr)
     conn=dial(addr)
     print('Dial ejecuatado en:',conn.origin_address)
+    print(conn.connected_address[0])
+    print(convert_bytes_to_int(conn.seq[0]))
+    print(convert_bytes_to_int(conn.ack[0]))
+
     print("Entrando a el send")
     send(conn,data)
     print('Paquete enviado')
+    print(len(conn.connected_address))
+
     
     
 flags=Flags()

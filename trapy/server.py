@@ -7,11 +7,15 @@ def recv_Test_pack(addr:str):
     print("server listening")
     accept(conn)
 
+    print(conn.connected_address[0])
+    print(convert_bytes_to_int(conn.seq[0]))
+    print(convert_bytes_to_int(conn.ack[0]))
     print("server accepted connection")
     print("Listo para recibir")
-    print('Se recibió',recv(conn, 1024))
+    print('Se recibió', recv(conn, 1024))
 
     print('Terminado el Recive')
+    print(len(conn.connected_address))
     
     
 
