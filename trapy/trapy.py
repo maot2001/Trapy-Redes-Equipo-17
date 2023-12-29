@@ -20,7 +20,6 @@ def listen(address: str):
     return conn
 
 def accept(conn: Conn):
-
     while True:
         try:
             packet, _ = conn.socket.recvfrom(1024)

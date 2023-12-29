@@ -1,4 +1,5 @@
 import socket
+import random
 
 class Conn:
 
@@ -33,6 +34,6 @@ class Conn:
                 break
         else:
             self.socket.bind(address)
-            
+
 class ConnException(Exception):
     pass
