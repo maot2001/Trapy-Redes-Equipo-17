@@ -261,7 +261,7 @@ def send(conn: Conn, data: bytes) -> int:
               #TODO:AÑadir si es para desconectar
                 
         print('Se envio un paquete')  
-            
+        print("jfjfj")  
             #Esperar el acuse de recibo
     #Cerrar conexión
     #Envio mi petición de cierre de conexión
