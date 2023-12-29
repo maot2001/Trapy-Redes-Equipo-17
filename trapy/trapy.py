@@ -52,23 +52,25 @@ def accept(conn: Conn):
         packet = create_packet(conn, index, flags)
 
         logger.info(f'syn-ack sending')
+        timer = time.time()  # Inicializa timer para la primera transmisión
         conn.socket.sendto(packet, conn.connected_address[index])
+        conn.socket.settimeout(0.5)
 
         while True:
-            """if not accept_conn.running() or accept_conn.timeout():
-                logger.warning(f'syn-ack sending again')
-                accept_conn.socket.sendto(packet, accept_conn.connected_address)
-                accept_conn.origin_address = conn.origin_address
-
-            if accept_conn.waiter(180):
-                accept_conn.stop()
-                logger.error(f'error sending')
-                raise ConnException()"""
-
             try:
                 packet, _ = conn.socket.recvfrom(1024)
                 address, protocol, _, flags = data_conn(packet)
+                print("entra")
             except:
+                print("time_out")
+                if time.time() - timer >= conn.time_out:  # Retransmitir si timeout
+                time_out = time_out+1
+                if(time_out>5):#actualiza el timeout pq tal vez es muy pequeño
+                    conn.time_out = conn.time_out +2
+                conn.socket.sendto(packet, conn.connected_address[0])
+                timer = time.time()  # Reiniciar timer
+                if(conn.time_out>60):# revisa q no este esperando mas de un minuto
+                    raise ConnException()
                 continue
 
             ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
@@ -99,24 +101,24 @@ def dial(address: str) -> Conn:
     packet = create_packet(conn, index, flags)
 
     logger.info(f'syn sending')
+    timer = time.time()  # Inicializa timer para la primera transmisión
     conn.socket.sendto(packet, conn.connected_address[index])
+    conn.socket.settimeout(0.5)
 
     while True:
-        """if not conn.running() or conn.timeout():
-            logger.warning(f'syn sending again')
-            conn.socket.sendto(packet, conn.connected_address)
-            conn.origin_address = conn.socket.getsockname()
-            conn.time_init = time.time()
-            
-        if conn.waiter(180):
-            conn.stop()
-            logger.error(f'error sending')
-            #TODO: Poner la exepcionraise ConnException()"""
-        
         try:
             packet, _ = conn.socket.recvfrom(1024)
             address, protocol, _, flags = data_conn(packet)
         except:
+            print("time_out")
+            if time.time() - timer >= conn.time_out:  # Retransmitir si timeout
+                time_out = time_out+1
+                if(time_out>5):#actualiza el timeout pq tal vez es muy pequeño
+                    conn.time_out = conn.time_out +2
+                conn.socket.sendto(packet, conn.connected_address[0])
+                timer = time.time()  # Reiniciar timer
+                if(conn.time_out>60):# revisa q no este esperando mas de un minuto
+                    raise ConnException()
             continue
         
         ack = int.from_bytes(conn.seq[index], byteorder='big', signed=False)
@@ -137,10 +139,7 @@ def dial(address: str) -> Conn:
         break
     return conn
 
-import time
-
 def send(conn: Conn, data: bytes) -> int:
-    print("soy yo")
     mss: int = 1024
     data_len = len(data)
     flags = Flags()
@@ -150,6 +149,7 @@ def send(conn: Conn, data: bytes) -> int:
     timer = time.time()  # Inicializa timer para la primera transmisión
     conn.socket.sendto(packet, conn.connected_address[0])
     conn.socket.settimeout(0.5)
+
     while True:
         try:
             packet, _ = conn.socket.recvfrom(mss)
@@ -167,12 +167,9 @@ def send(conn: Conn, data: bytes) -> int:
                     raise ConnException()
             continue
 
-        
-
         if address != conn.connected_address[0]:
             continue
         
-
         tcp_header = Protocol_Wrapped(protocol)
         seq = convert_bytes_to_int(conn.seq[0])
         seq += data_len
